@@ -25,6 +25,11 @@
         <span>Administration</span>
         <div class="menu-separator"></div>
       </h4>
+      <li >
+        <a href="/dashboard">
+          <i class="pi pi-chart-bar"></i> Dashboard
+        </a>
+      </li>
       <li>
         <a href="/signup">
           <i class="pi pi-user-plus"></i> Ajouter un utilisateur
@@ -35,6 +40,7 @@
           <i class="pi pi-users"></i> Liste des utilisateurs
         </a>
       </li>
+
       </div>
       <!-- Section Ressources Humaines -->
       <h4 *ngIf="isRH()">
@@ -158,7 +164,11 @@
           <i class="pi pi-folder"></i> Archive
         </a>
       </li>
-      
+         <li *ngIf="isRH()">
+        <a href="habilite">
+          <i class="pi pi-key"></i> les Habilitations
+        </a>
+      </li>
 
       
       <!-- Section Compte -->

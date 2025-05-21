@@ -378,15 +378,16 @@ this.topEmployesData = {
     datasets: [
       {
         label: `Compétences maîtrisées`,
-        backgroundColor: '#4CAF50',
-        borderColor: '#2E7D32',
+       backgroundColor: 'rgba(33, 150, 243, 0.3)',
+
+       borderColor: '#1565C0',
         borderWidth: 1,
         borderRadius: 4,
         data: topEmployes.map(e => e.score)
       },
       {
         label: 'Compétences manquantes',
-        backgroundColor: '#F44336',
+      backgroundColor: 'rgba(244, 67, 54, 0.3)', 
         borderColor: '#C62828',
         borderWidth: 1,
         borderRadius: 4,
@@ -400,7 +401,8 @@ this.topEmployesData = {
 
   this.topEmployesOptions = {
     responsive: true,
-    maintainAspectRatio: false,
+   maintainAspectRatio: true, // Changé à true
+    aspectRatio: 2, // Ratio largeur/hauteur fixe
     plugins: {
       legend: {
         position: 'top',
@@ -488,6 +490,7 @@ this.topEmployesData = {
       easing: 'easeOutQuart'
     }
   };
+   this.initCompetenceCharts();
 }
 
 
@@ -516,12 +519,12 @@ allPostes: string[] = [];
 
 initPostesList(): void {
   const postesUniques = [...new Set(this.employes.flatMap(e => e.postesHabilites.map(p => p.titre)))];
+  console.log("liste des postes", postesUniques); 
   this.listePostes = postesUniques.map(poste => ({
     label: poste,
     value: poste
   })).sort((a, b) => a.label.localeCompare(b.label));
 }
-
 hasAccess(employe: EmployeHabilitationDto, posteTitre: string): boolean {
   return employe.postesHabilites.some(p => p.titre === posteTitre);
 }
@@ -563,7 +566,7 @@ loadEmployees(): void {
     this.initChart();
     this.initPostesList();
      this.selectRandomPoste(); 
-    // Initialiser la liste des postes pour la matrice
+
     const postesSet = new Set<string>();
     this.employes.forEach(emp => {
       emp.postesHabilites.forEach(p => postesSet.add(p.titre));
@@ -610,5 +613,102 @@ filledStars(poste: any): number {
 getStars(poste: any): number[] {
   return [1, 2, 3, 4, 5];
 }
+// Ajoutez ces propriétés à votre classe
+lineChartData: any;
+lineChartOptions: any;
+topCompetencesData: any;
+weakCompetencesData: any;
+barChartOptions: any;
+
+// Méthode pour initialiser les graphiques de compétences
+initCompetenceCharts(): void {
+  if (!this.posteSelectionne) return;
+
+  // 1. Récupérer tous les employés pour ce poste
+  const employesPourPoste = this.employes.filter(emp => 
+    emp.postesHabilites.some(p => p.titre === this.posteSelectionne)
+  );
+
+  // 2. Compter les compétences maîtrisées et manquantes
+  const competenceStats: {[key: string]: {mastered: number, missing: number}} = {};
+
+  employesPourPoste.forEach(emp => {
+    const poste = emp.postesHabilites.find(p => p.titre === this.posteSelectionne)!;
+    
+    // Compétences maîtrisées
+    poste.competences.forEach(comp => {
+      if (!poste.competencesManquantes.includes(comp)) {
+        if (!competenceStats[comp]) competenceStats[comp] = {mastered: 0, missing: 0};
+        competenceStats[comp].mastered++;
+      }
+    });
+    
+    // Compétences manquantes
+    poste.competencesManquantes.forEach(comp => {
+      if (!competenceStats[comp]) competenceStats[comp] = {mastered: 0, missing: 0};
+      competenceStats[comp].missing++;
+    });
+  });
+
+  // 3. Préparer les données pour les graphiques
+  const competences = Object.keys(competenceStats);
+  
+  // Top compétences maîtrisées
+  const topCompetences = [...competences]
+    .sort((a, b) => competenceStats[b].mastered - competenceStats[a].mastered)
+    .slice(0, 5);
+  
+  // Compétences à améliorer
+  const weakCompetences = [...competences]
+    .sort((a, b) => competenceStats[b].missing - competenceStats[a].missing)
+    .slice(0, 5);
+
+  // 4. Configurer les graphiques
+  this.topCompetencesData = {
+    labels: topCompetences,
+    datasets: [{
+      label: 'Employés maîtrisant cette compétence',
+     backgroundColor: 'rgba(156, 39, 176, 0.3)',
+
+      data: topCompetences.map(comp => competenceStats[comp].mastered)
+    }]
+  };
+
+  this.weakCompetencesData = {
+    labels: weakCompetences,
+    datasets: [{
+      label: 'Employés devant améliorer cette compétence',
+     backgroundColor: 'rgba(255, 152, 0, 0.3)' ,
+      data: weakCompetences.map(comp => competenceStats[comp].missing)
+    }]
+  };
+
+  // Options communes pour les bar charts
+  this.barChartOptions = {
+    responsive: true,
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        display: false
+      }
+    }
+  };
+}
+// Messages d'aide à la décision
+decisionMessages: {
+  topEmployees?: string;
+  topCompetences?: string;
+  weakCompetences?: string;
+} = {};
+
+
+
 
 }

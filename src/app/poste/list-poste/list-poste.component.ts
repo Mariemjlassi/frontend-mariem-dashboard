@@ -21,6 +21,9 @@ import { FileUploadModule } from 'primeng/fileupload';
 import { CompetencePoste } from '../model/competenceposte';
 import { CompetencePosteService } from '../service/competenceposte.service';
 import { BadgeModule } from 'primeng/badge';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 @Pipe({ name: 'truncate' })
 export class TruncatePipe implements PipeTransform {
   transform(value: string, limit: number = 50, trail: string = '...'): string {
@@ -41,9 +44,11 @@ export class TruncatePipe implements PipeTransform {
     MultiSelectModule,
     TooltipModule,
     ProgressBarModule,
-    BadgeModule
-   
+    BadgeModule,
+     ToastModule,
+       ConfirmDialogModule,
   ],
+  providers: [ConfirmationService,MessageService],
   templateUrl: './list-poste.component.html',
   styleUrl: './list-poste.component.css'
 })
@@ -69,6 +74,7 @@ export class ListPosteComponent implements OnInit {
   safeDocumentUrl: SafeResourceUrl | null = null;
 
   constructor(private posteService: PosteService,private directionservice: DirectionService,private sanitizer: DomSanitizer,
+    private messageService: MessageService, private confirmationService: ConfirmationService,
     private competenceService: CompetencePosteService
   ) {}
   loadCompetences(): void {
@@ -171,49 +177,85 @@ isPdf(document: File | string): boolean {
     
     fileReader.readAsArrayBuffer(file); // Lire le fichier en tant qu'ArrayBuffer
   }
-  ajouterPoste() {
-    console.log("📌 Directions sélectionnées (IDs) :", this.selectedDirectionIds);
-    console.log("📌 Fichier sélectionné :", this.selectedFile);
+ajouterPoste() {
+  // Vérification des champs obligatoires
+  if (!this.selectedDirectionIds || this.selectedDirectionIds.length === 0) {
+    this.messageService.add({ severity: 'warn', summary: 'Attention', detail: 'La sélection des Directions est obligatoire.' });
+    return;
+  }
 
-    // Créer un FormData pour envoyer les données
-    const formData = new FormData();
-    formData.append('titre', this.newPoste.titre);
-    formData.append('niveauExperience', this.newPoste.niveauExperience);
-    formData.append('diplomeRequis', this.newPoste.diplomeRequis);
-    formData.append('competencesRequises', this.newPoste.competencesRequises);
-    this.newPoste.lesProgrammesDeFormation.forEach((programme :string)=> {
-      if (programme.trim()) { // Ne pas envoyer les champs vides
-          formData.append('lesProgrammesDeFormation', programme);
-      }
-  });
-    // Ajouter chaque directionId séparément dans FormData
-    this.selectedDirectionIds.forEach(directionId => {
-        formData.append('directionIds', directionId.toString());  // Ajoute chaque ID de direction comme une entrée séparée
-    });
-    this.selectedCompetenceIds.forEach(id => {
-      formData.append('competencePosteIds', id.toString());
-    });
+  if (!this.selectedCompetenceIds || this.selectedCompetenceIds.length === 0) {
+    this.messageService.add({ severity: 'warn', summary: 'Attention', detail: 'La sélection des Compétences est obligatoire.' });
+    return;
+  }
 
-    // Ajouter le fichier s'il existe
-    if (this.selectedFile) {
-        formData.append('document', this.selectedFile);
+  if (!this.newPoste.lesProgrammesDeFormation || this.newPoste.lesProgrammesDeFormation.length === 0 || this.newPoste.lesProgrammesDeFormation.every((p: string) => p.trim() === '')
+) {
+    this.messageService.add({ severity: 'warn', summary: 'Attention', detail: 'Veuillez ajouter au moins un Programme de formation.' });
+    return;
+  }
+
+  // Si tout est valide, continuer la soumission
+
+  console.log("📌 Directions sélectionnées (IDs) :", this.selectedDirectionIds);
+  console.log("📌 Fichier sélectionné :", this.selectedFile);
+
+  const formData = new FormData();
+  formData.append('titre', this.newPoste.titre);
+  formData.append('niveauExperience', this.newPoste.niveauExperience);
+  formData.append('diplomeRequis', this.newPoste.diplomeRequis);
+  formData.append('competencesRequises', this.newPoste.competencesRequises);
+
+  this.newPoste.lesProgrammesDeFormation.forEach((programme: string) => {
+    if (programme.trim()) {
+      formData.append('lesProgrammesDeFormation', programme);
     }
+  });
 
-    console.log("📌 Données envoyées à l'API :", formData);
+  this.selectedDirectionIds.forEach(directionId => {
+    formData.append('directionIds', directionId.toString());
+  });
 
-    // Appel du service pour ajouter le poste avec le fichier
-    this.posteService.ajouterPoste(formData).subscribe(
-        response => {
-            console.log("✅ Poste ajouté avec succès :", response);
-            this.resetForm();
-            this.visibleAddDialog = false;
-            this.loadPostes(); // Rafraîchir la liste après l'ajout
-        },
-        error => {
-            console.error("❌ Erreur lors de l'ajout :", error);
-        }
-    );
+  this.selectedCompetenceIds.forEach(id => {
+    formData.append('competencePosteIds', id.toString());
+  });
+
+  if (this.selectedFile) {
+    formData.append('document', this.selectedFile);
+  }
+
+  console.log("📌 Données envoyées à l'API :", formData);
+
+  this.posteService.ajouterPoste(formData).subscribe(
+    response => {
+      console.log("✅ Poste ajouté avec succès :", response);
+      this.resetForm();
+      this.visibleAddDialog = false;
+      this.loadPostes();
+    },
+    error => {
+      console.error("❌ Erreur lors de l'ajout :", error);
+    }
+  );
 }
+
+showDirectionsError = false;
+showCompetencesError = false;
+showProgrammesError = false;
+
+checkDirections() {
+  this.showDirectionsError = !this.selectedDirectionIds || this.selectedDirectionIds.length === 0;
+}
+
+checkCompetences() {
+  this.showCompetencesError = !this.selectedCompetenceIds || this.selectedCompetenceIds.length === 0;
+}
+
+checkProgrammes() {
+  this.showProgrammesError = !this.newPoste.lesProgrammesDeFormation || this.newPoste.lesProgrammesDeFormation.length === 0 ||this.newPoste.lesProgrammesDeFormation.every((p: string) => p.trim() === '')
+;
+}
+
 ajouterProgramme() {
   if (!this.newPoste.lesProgrammesDeFormation) {
     this.newPoste.lesProgrammesDeFormation = [];
@@ -279,55 +321,68 @@ supprimerProgrammeModif(index: number) {
 
 updatePoste(): void {
   if (!this.selectedPoste.id) {
+    this.messageService.add({ severity: 'error', summary: 'Erreur', detail: "L'ID du poste sélectionné est manquant !" });
     console.error("❌ Erreur : l'ID du poste sélectionné est manquant !");
     return;
   }
 
-  // Créer un FormData pour envoyer les données
+  // Vérifications similaires aux ajouts, si tu veux
+  if (!this.selectedDirectionIds || this.selectedDirectionIds.length === 0) {
+    this.messageService.add({ severity: 'warn', summary: 'Attention', detail: 'La sélection des Directions est obligatoire.' });
+    return;
+  }
+
+  if (!this.selectedCompetenceIds || this.selectedCompetenceIds.length === 0) {
+    this.messageService.add({ severity: 'warn', summary: 'Attention', detail: 'La sélection des Compétences est obligatoire.' });
+    return;
+  }
+
+  if (!this.selectedPoste.lesProgrammesDeFormation || this.selectedPoste.lesProgrammesDeFormation.length === 0 || this.selectedPoste.lesProgrammesDeFormation.every((p: string) => p.trim() === '')) {
+    this.messageService.add({ severity: 'warn', summary: 'Attention', detail: 'Veuillez ajouter au moins un Programme de formation.' });
+    return;
+  }
+
   const formData = new FormData();
 
-  // Ajouter les champs texte du Poste
   formData.append('titre', this.selectedPoste.titre);
   formData.append('niveauExperience', this.selectedPoste.niveauExperience);
   formData.append('diplomeRequis', this.selectedPoste.diplomeRequis);
   formData.append('competencesRequises', this.selectedPoste.competencesRequises);
-if (this.selectedPoste.lesProgrammesDeFormation && this.selectedPoste.lesProgrammesDeFormation.length > 0) {
+
   this.selectedPoste.lesProgrammesDeFormation.forEach(programme => {
     formData.append('lesProgrammesDeFormation', programme);
   });
-}
+
   this.selectedCompetenceIds.forEach(id => {
     formData.append('competencePosteIds', id.toString());
   });
-  // Ajouter chaque directionId séparément dans FormData
+
   this.selectedDirectionIds.forEach(directionId => {
     formData.append('directionIds', directionId.toString());
   });
 
-  // Ajouter le fichier s'il existe
   if (this.selectedFile) {
     formData.append('document', this.selectedFile);
   }
 
-  console.log("📌 Données envoyées à l'API :", formData);
-
-  // Appel du service pour mettre à jour le poste avec le fichier
   this.posteService.updatePoste(this.selectedPoste.id, formData).subscribe(
     (response) => {
+      this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Poste mis à jour avec succès !' });
       console.log("✅ Poste mis à jour avec succès :", response);
 
-      // Met à jour la liste des postes sans recharger toute la page
       this.postes = this.postes.map(p =>
         p.id === this.selectedPoste.id ? { ...p, ...response, id: p.id } : p
       );
 
-      this.visibleUpdateDialog = false; // Ferme la boîte de dialogue après la mise à jour
+      this.visibleUpdateDialog = false;
     },
     (error) => {
+      this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de la mise à jour du poste.' });
       console.error("❌ Erreur lors de la mise à jour :", error);
     }
   );
 }
+
 
 
 onFileSelected(event: any) {
@@ -415,15 +470,45 @@ confirmDelete(): void {
   }
 }
 
-  exportPostes(): void {
-    if (this.selectedPostes.length > 0) {
-      const csvData = this.convertToCSV(this.selectedPostes); 
+exportPostes(): void {
+  const hasSelected = this.selectedPostes.length > 0;
+  const count = this.selectedPostes.length;
+
+  this.confirmationService.confirm({
+    header: 'Confirmer l’exportation',
+    message: hasSelected
+      ? `Voulez-vous exporter les ${count} poste${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''} ?`
+      : 'Aucun poste sélectionné. Voulez-vous exporter tous les postes ?',
+    icon: 'pi pi-exclamation-triangle',
+    acceptButtonProps: {
+      label: 'Oui',
+      icon: 'pi pi-check',
+      severity: 'danger'
+    },
+    rejectButtonProps: {
+      label: 'Non',
+      icon: 'pi pi-times',
+      severity: 'secondary'
+    },
+    accept: () => {
+      let csvData;
+      if (hasSelected) {
+        csvData = this.convertToCSV(this.selectedPostes);
+      } else {
+        csvData = this.convertToCSV(this.postes);
+      }
       this.downloadCSV(csvData);
-    } else {
-      const csvData = this.convertToCSV(this.postes); 
-      this.downloadCSV(csvData);
+    },
+    reject: () => {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Annulé',
+        detail: 'Exportation annulée',
+      });
     }
-  }
+  });
+}
+
   
   
   convertToCSV(data: any[]): string {

@@ -706,6 +706,8 @@
       transition: 0s;
     }
   </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
 </head>
 
 <body>
@@ -727,25 +729,54 @@
   </div>
 
   <!-- Conteneur principal -->
-  <div class="main-container">
+
     <p-card header="Liste des Formations" [style]="{ 'border-radius': '10px' }" class="p-shadow-3">
       <p-tabView class="custom-tabview">
 
-        <!-- Dialogue Détails de la formation -->
-        <p-dialog header="Détails de la formation" [(visible)]="displayEventDialog" [modal]="true"
-          [style]="{ width: '450px' }" [draggable]="false" [resizable]="false" class="modern-dialog">
-          <div class="dialog-content" *ngIf="selectedEvent">
-            <p><strong>Titre :</strong> {{ selectedEvent.title }}</p>
-            <p><strong>Début :</strong> {{ selectedEvent.start | date: 'dd/MM/yyyy HH:mm' }}</p>
-            <p><strong>Fin :</strong> {{ selectedEvent.end | date: 'dd/MM/yyyy HH:mm' }}</p>
-          </div>
-          <ng-template pTemplate="footer">
+<p-dialog header="Détails de la formation" [(visible)]="displayEventDialog" [modal]="true"
+          [style]="{ width: '520px' }" [draggable]="false" [resizable]="false" class="ft-dialog__container">
+  
+  <div class="ft-dialog__content" *ngIf="selectedEvent">
+    <div class="ft-dialog__card">
+      <div class="ft-dialog__card-icon">
+        <i class="fas fa-chalkboard-teacher"></i>
+      </div>
+      <div class="ft-dialog__card-content">
+        <div class="ft-dialog__card-label">Intitulé</div>
+        <div class="ft-dialog__card-value">{{ selectedEvent.title }}</div>
+      </div>
+    </div>
+    
+    <div class="ft-dialog__card">
+      <div class="ft-dialog__card-icon">
+        <i class="fas fa-play-circle"></i>
+      </div>
+      <div class="ft-dialog__card-content">
+        <div class="ft-dialog__card-label">Début</div>
+        <div class="ft-dialog__card-value">  {{ selectedEvent.start | date: 'dd/MM/yyyy ' }}</div>
+      </div>
+    </div>
+    
+    <div class="ft-dialog__card">
+      <div class="ft-dialog__card-icon">
+        <i class="fas fa-flag-checkered"></i>
+      </div>
+      <div class="ft-dialog__card-content">
+        <div class="ft-dialog__card-label">Fin</div>
+        <div class="ft-dialog__card-value">{{ selectedEvent.end | date: 'dd/MM/yyyy ' }}</div>
+      </div>
+    </div>
+    
+  
+  </div>
+  
+ <ng-template pTemplate="footer">
             <button pButton type="button" label="Fermer" (click)="displayEventDialog = false"
               class="p-button-text"></button>
           </ng-template>
-        </p-dialog>
+</p-dialog>
 
-        <p-tabPanel header="Polyvalence" leftIcon="pi pi-sitemap">
+  <p-tabPanel header="Polyvalence" leftIcon="pi pi-sitemap">
           <p-tabView>
 
 
@@ -790,7 +821,7 @@
                       <td>{{ formation.description }}</td>
                       <td>{{ formation.typeFormation }}</td>
                       <td>{{ formation.sousTypeFormation }}</td>
-                      <td>{{ formation.responsableEvaluationExterne }}</td>
+                     <td>{{ formation.responsableEvaluation?.nom || formation.responsableEvaluationExterne || 'N/A' }}
                       <td class="text-center">
                         <button pButton icon="pi pi-users" (click)="showParticipants(formation)"
                           class="p-button-rounded p-button-text p-button-plain" pTooltip="Voir participants"></button>
@@ -876,7 +907,7 @@
                       <td>{{ formation.description }}</td>
                       <td>{{ formation.typeFormation }}</td>
                       <td>{{ formation.sousTypeFormation }}</td>
-                      <td>{{ formation.responsableEvaluationExterne }}</td>
+                      <td>{{ formation.responsableEvaluation?.nom || formation.responsableEvaluationExterne || 'N/A' }}
                       <td class="text-center">
                         <button pButton icon="pi pi-users" (click)="showParticipants(formation)"
                           class="p-button-rounded p-button-text p-button-plain" pTooltip="Voir participants"></button>
@@ -990,7 +1021,7 @@
                       <td>{{ formation.description }}</td>
                       <td>{{ formation.typeFormation }}</td>
                       <td>{{ formation.sousTypeFormation }}</td>
-                      <td>{{ formation.responsableEvaluationExterne }}</td>
+                     <td>{{ formation.responsableEvaluation?.nom || formation.responsableEvaluationExterne || 'N/A' }}
                       <td class="text-center">
                         <button pButton icon="pi pi-users" (click)="showParticipants(formation)"
                           class="p-button-rounded p-button-text p-button-plain" pTooltip="Voir participants"></button>
@@ -1693,7 +1724,6 @@ Problème de validation pour :
         </p-tabPanel>
       </p-tabView>
     </p-card>
-  </div>
 
   <!-- Dialogue Calendrier modernisé -->
   <p-dialog header="Calendrier des Formations" [(visible)]="displayCalendarDialog" [modal]="true"
@@ -1717,7 +1747,7 @@ Problème de validation pour :
             <th style="min-width: 180px;">Participant</th>
             <th style="width: 120px;">Matricule</th>
             <th>Email</th>
-            <th *ngIf="selectedFormation.valide" style="width: 200px;">Document</th>
+            <th *ngIf="showDocumentColumn()" style="width: 200px;">Document</th>
             <th *ngIf="selectedFormation.valide" style="width: 250px;">Évaluation</th>
           </tr>
         </ng-template>
@@ -1751,7 +1781,7 @@ Problème de validation pour :
             </td>
 
             <!-- Colonne Document (si formation validée) -->
-            <td *ngIf="selectedFormation.valide">
+            <td *ngIf="showDocumentColumn()">
               <div *ngIf="pdfUrls[employe.id]" class="document-container">
                 <button pButton icon="pi pi-file-pdf" (click)="openPdfDialog(pdfUrls[employe.id])"
                   class="p-button-rounded p-button-outlined p-button-danger" pTooltip="Voir le document"
@@ -1782,8 +1812,12 @@ Problème de validation pour :
               <div *ngIf="employe.resultat" class="evaluation-result">
                 <p-tag [severity]="getSeverity(employe.resultat)" [value]="getResultatLabel(employe.resultat)"
                   styleClass="result-tag"></p-tag>
-                <button pButton icon="pi pi-pencil" (click)="checkBeforeEdit(employe)"
-                  class="p-button-rounded p-button-text edit-btn" pTooltip="Modifier" tooltipPosition="left"></button>
+               <button pButton icon="pi pi-pencil" 
+        (click)="checkBeforeEdit(employe)"
+        [disabled]="(selectedFormation.sousTypeFormation === 'INTEGRATION' || selectedFormation.sousTypeFormation === 'POLYVALENCE') && employe.resultat === 'REUSSI'"
+        class="p-button-rounded p-button-text edit-btn" 
+        pTooltip="Modifier" 
+        tooltipPosition="left"></button>
               </div>
             </td>
           </tr>
@@ -2147,7 +2181,7 @@ Problème de validation pour :
         <div class="form-group">
           <label for="formateurPartie{{i}}">Formateur partie {{ idx + 1 }}</label>
           <span class="p-input-icon-left">
-            <i class="pi pi-user"></i>
+          
             <input type="text" pInputText id="formateurPartie{{i}}" 
                    formControlName="formateurPartie{{i}}"
                    placeholder="Nom du formateur" />
@@ -2237,13 +2271,16 @@ Problème de validation pour :
 
     </form>
     <ng-template pTemplate="footer">
-      <button pButton pRipple type="button" label="Annuler" icon="pi pi-times" class="p-button-danger"
-        (click)="closeDialog()"></button>
-      <button *ngIf="shouldShowEnteteSection()" pButton pRipple type="button" label="Aperçu" icon="pi pi-eye" class="p-button-info"
-        (click)="showPreview()"></button>
-
-      <button pButton pRipple type="button" (click)="submitFormation()" label="submit" icon="pi pi-check"
-        class="p-button-success"></button>
+   <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+  <button pButton label="Annuler" icon="pi pi-times" class="p-button-text" 
+          (click)="closeDialog()" severity="danger"></button>
+  
+  <button *ngIf="shouldShowEnteteSection()" pButton label="Aperçu" icon="pi pi-eye" class="p-button-text" 
+          (click)="showPreview()" severity="info"></button>
+  
+  <button pButton label="Enregistrer" icon="pi pi-check" class="p-button-text" 
+          (click)="submitFormation()" type="submit" severity="success"></button>
+</div>
     </ng-template>
 
   </p-dialog>
@@ -2462,7 +2499,7 @@ Problème de validation pour :
   <p-dialog header="Modifier la Formation" [(visible)]="displayModificationDialog" [modal]="true" [closable]="true"
     [style]="{ width: '900px', height: shouldShowPosteSectionModif() ? '800px' : '600px' }"
     [contentStyle]="{ 'max-height': '900px', 'overflow-y': 'auto' }" [responsive]="true">
-    <form [formGroup]="modificationForm" (ngSubmit)="submitModificationForm()">
+    <form [formGroup]="modificationForm">
       <div class="p-fluid">
         <div class="p-mb-4" *ngIf="modificationForm.get('entete')?.value">
           <h4>Aperçu de l'entête sélectionnée</h4>
@@ -2546,61 +2583,81 @@ Problème de validation pour :
         </div>
 
 
+<div *ngIf="isPolyOrIntegrationModif() && modificationForm.get('titrePoste')?.value" class="parties-container">
+  <h4>Périodes de formation</h4>
+  
+  <div *ngFor="let periode of periodesModif; let idx = index" class="partie-wrapper">
+    <div class="partie-content">
+      <!-- Bouton Supprimer -->
+      <button *ngIf="periodesModif.length > 1" pButton icon="pi pi-times"
+              class="delete-partie-btn"
+              (click)="supprimerPeriodeModif(idx)"></button>
 
-
-        <div *ngIf="isPolyOrIntegrationModif() && modificationForm.get('titrePoste')?.value" class="p-field"
-          style="margin-top: 1rem;">
-          <h4>Périodes de formation</h4>
-
-          <div *ngFor="let periode of periodesModif; let idx = index; let last = last" class="p-grid p-formgrid p-fluid"
-            style="position: relative; margin-bottom: 1rem; border: 1px solid #ddd; padding: 1rem; border-radius: 4px;">
-            <!-- Bouton Supprimer (sauf pour la première partie) -->
-            <button *ngIf="periodesModif.length > 1" pButton icon="pi pi-times"
-              class="p-button-rounded p-button-danger p-button-text"
-              style="position: absolute; right: 0; top: 0; z-index: 1;" (click)="supprimerPeriodeModif(idx)"></button>
-
-            <div class="p-col-12">
-              <h5>Période {{ idx + 1 }}</h5>
-            </div>
-
-            <!-- Champ Formateur -->
-            <div class="p-col-12 p-md-4">
-              <label [for]="'formateurModif' + idx">Formateur</label>
-              <input type="text" pInputText [id]="'formateurModif' + idx" [(ngModel)]="periode.formateur"
-                [ngModelOptions]="{standalone: true}" placeholder="Nom du formateur" />
-            </div>
-
-            <!-- Champ Date début -->
-            <div class="p-col-12 p-md-4">
-              <label [for]="'dateDebutModif' + idx">Date début</label>
-              <p-calendar [id]="'dateDebutModif' + idx" [(ngModel)]="periode.dateDebut"
-                [ngModelOptions]="{standalone: true}" [showIcon]="true" dateFormat="dd/mm/yy"></p-calendar>
-            </div>
-
-            <!-- Champ Date fin -->
-            <div class="p-col-12 p-md-4">
-              <label [for]="'dateFinModif' + idx">Date fin</label>
-              <p-calendar [id]="'dateFinModif' + idx" [(ngModel)]="periode.dateFin"
-                [ngModelOptions]="{standalone: true}" [showIcon]="true" dateFormat="dd/mm/yy"></p-calendar>
-            </div>
-
-            <!-- Section Programmes de Formation -->
-            <div class="p-col-12" *ngIf="modificationForm.get('titrePoste')?.value?.lesProgrammesDeFormation?.length">
-              <label [for]="'programmeModif' + idx">Programme</label>
-              <p-dropdown [options]="modificationForm.get('titrePoste')?.value?.lesProgrammesDeFormation"
-                [(ngModel)]="periode.programme" [ngModelOptions]="{standalone: true}" [id]="'programmeModif' + idx"
-                placeholder="Sélectionner un programme" [showClear]="true" [filter]="true"
-                filterPlaceholder="Rechercher un programme">
-              </p-dropdown>
-            </div>
-          </div>
-
-          <!-- Bouton Ajouter une période -->
-          <div class="p-field" *ngIf="peutAjouterPeriodeModif()">
-            <button pButton type="button" label="Ajouter une partie" icon="pi pi-plus" class="p-button-secondary"
-              (click)="ajouterPeriodeModif()"></button>
-          </div>
+      <div class="form-grid">
+        <!-- Champ Formateur -->
+        <div class="form-group">
+          <label [for]="'formateurModif' + idx">Formateur partie {{ idx + 1 }}</label>
+          <span class="p-input-icon-left">
+           
+            <input type="text" pInputText [id]="'formateurModif' + idx" 
+                   [(ngModel)]="periode.formateur"
+                   [ngModelOptions]="{standalone: true}"
+                   placeholder="Nom du formateur" />
+          </span>
         </div>
+
+        <!-- Date Début -->
+        <div class="form-group">
+          <label [for]="'dateDebutModif' + idx">Date début partie {{ idx + 1 }}</label>
+          <p-calendar [id]="'dateDebutModif' + idx" 
+                     [(ngModel)]="periode.dateDebut"
+                     [ngModelOptions]="{standalone: true}"
+                     [showIcon]="true"
+                     dateFormat="dd/mm/yy"></p-calendar>
+        </div>
+
+        <!-- Date Fin -->
+        <div class="form-group">
+          <label [for]="'dateFinModif' + idx">Date fin partie {{ idx + 1 }}</label>
+          <p-calendar [id]="'dateFinModif' + idx" 
+                     [(ngModel)]="periode.dateFin"
+                     [ngModelOptions]="{standalone: true}"
+                     [showIcon]="true"
+                     dateFormat="dd/mm/yy"
+                     [showTime]="false"
+                     [monthNavigator]="true"
+                     [yearNavigator]="true"
+                     yearRange="2000:2030">
+          </p-calendar>
+        </div>
+
+        <!-- Programme -->
+        <div class="form-group full-width" *ngIf="modificationForm.get('titrePoste')?.value?.lesProgrammesDeFormation?.length">
+          <label [for]="'programmeModif' + idx">Programme pour partie {{ idx + 1 }}</label>
+          <p-dropdown [options]="modificationForm.get('titrePoste')?.value?.lesProgrammesDeFormation"
+                     [(ngModel)]="periode.programme"
+                     [ngModelOptions]="{standalone: true}"
+                     [id]="'programmeModif' + idx"
+                     placeholder="Sélectionner un programme" 
+                     [showClear]="true" 
+                     [filter]="true"
+                     filterPlaceholder="Rechercher un programme">
+          </p-dropdown>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bouton Ajouter -->
+  <div class="add-button" *ngIf="peutAjouterPeriodeModif()">
+    <button pButton type="button" 
+            label="Ajouter une partie" 
+            icon="pi pi-plus" 
+            class="add-partie-btn"
+            (click)="ajouterPeriodeModif()"></button>
+  </div>
+</div>
+
 
 
 
@@ -2754,45 +2811,57 @@ Problème de validation pour :
           <br>
 
           <!-- Section employés pour POLYCOMPETENCE -->
-          <div class="p-field">
-            <label for="selectedCitiesModif">Participants</label>
-            <p-multiselect [options]="cities" formControlName="selectedCitiesModif"
-              placeholder="Sélectionner des employés" [maxSelectedLabels]="3" [filter]="true"
-              filterPlaceholder="Rechercher un employé" optionLabel="name" optionValue="code"
-              (onChange)="onEmployeSelectionChangeModif($event.value)">
-            </p-multiselect>
+        <!-- Section employés pour POLYCOMPETENCE -->
+<div class="p-field">
+  <label for="selectedCitiesModif">Participants</label>
+  <p-multiselect 
+    [options]="cities" 
+    formControlName="selectedCitiesModif"
+    placeholder="Sélectionner des employés" 
+    [maxSelectedLabels]="3" 
+    [filter]="true"
+    filterPlaceholder="Rechercher un employé" 
+    optionLabel="name" 
+    optionValue="code"
+    (onChange)="onEmployeSelectionChangeModif($event.value)">
+  </p-multiselect>
 
-            <!-- Liste des employés sélectionnés (tous types) -->
-            <div *ngIf="selectedEmployeesModif.length > 0" class="selected-employees">
-              <h4>Participants sélectionnés</h4>
-              <div *ngFor="let employee of selectedEmployeesModif" class="employee-item">
-                <span>{{ employee.name }} - Matricule: {{ employee.matricule }}</span>
+  <!-- Liste des employés sélectionnés (tous types) -->
+  <div *ngIf="selectedEmployees.length > 0" class="selected-employees">
+    <h4>Participants sélectionnés ({{selectedEmployees.length}})</h4>
+    <div *ngFor="let employee of selectedEmployees" class="employee-item">
+      <span>{{ employee.name }} - Matricule: {{ employee.matricule }}</span>
 
-                <!-- Section résultats (uniquement pour POLYCOMPETENCE) -->
-                <ng-container *ngIf="isPolycompetenceModif()">
-                  <span
-                    *ngIf="!selectedRadioModif[employee.code] || editingEmployeeModif[employee.code]; else showResultModif"
-                    class="radio-group">
-                    <label *ngFor="let option of resultatOptionss">
-                      <input type="radio" [name]="'radio_' + employee.code" [value]="option.value"
-                        [checked]="selectedRadioModif[employee.code] === option.value"
-                        (change)="onRadioChangeModif(employee.code, option.value)">
-                      {{ option.label }}
-                    </label>
-                  </span>
+      <ng-container *ngIf="isPolycompetenceModif()">
+        <span *ngIf="!selectedRadioModif[employee.id] || editingEmployeeModif[employee.id]; else showResultModif" class="radio-group">
+          <label *ngFor="let option of resultatOptionss">
+            <input 
+              type="radio" 
+              [name]="'radio_' + employee.id" 
+              [value]="option.value"
+              [checked]="selectedRadioModif[employee.id] === option.value"
+              (change)="onRadioChangeModif(employee.id, option.value)">
+            {{ option.label }}
+          </label>
+        </span>
 
-                  <ng-template #showResultModif>
-                    <p-tag [severity]="getSeverity(selectedRadioModif[employee.code])"
-                      [value]="getResultatLabel(selectedRadioModif[employee.code])">
-                    </p-tag>
-                    <button type="button" pButton icon="pi pi-pencil" class="p-button-rounded p-button-text"
-                      (click)="editSelectionModif(employee.code)">
-                    </button>
-                  </ng-template>
-                </ng-container>
-              </div>
-            </div>
-          </div>
+        <ng-template #showResultModif>
+          <p-tag 
+            [severity]="getSeverity(selectedRadioModif[employee.id])"
+            [value]="getResultatLabel(selectedRadioModif[employee.id])">
+          </p-tag>
+          <button 
+            type="button" 
+            pButton 
+            icon="pi pi-pencil" 
+            class="p-button-rounded p-button-text"
+            (click)="editSelectionModif(employee.id)">
+          </button>
+        </ng-template>
+      </ng-container>
+    </div>
+  </div>
+</div>
 
 
           <!-- Section PDF 
@@ -2807,19 +2876,24 @@ Problème de validation pour :
       <!-- Boutons -->
 
     </form>
-    <ng-template pTemplate="footer">
-      <button pButton pRipple type="button" label="Annuler" icon="pi pi-times" class="p-button-danger"
-        (click)="closeModificationDialog()"></button>
-      <button pButton pRipple type="button" label="Aperçu" icon="pi pi-eye" class="p-button-info"
-        (click)="showPreviewModification()"></button>
-
-      <button pButton pRipple type="button" (click)="submitModificationForm()" label="submit" icon="pi pi-check"
-        class="p-button-success"></button>
-    </ng-template>
+  <ng-template pTemplate="footer">
+  <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+    <button pButton label="Annuler" icon="pi pi-times" class="p-button-text" 
+            (click)="closeModificationDialog()" severity="danger"></button>
+    
+    <button pButton label="Aperçu" icon="pi pi-eye" class="p-button-text" 
+            (click)="showPreviewModification()" severity="info"></button>
+    
+    <button pButton label="Enregistrer" icon="pi pi-check" class="p-button-text" 
+            (click)="submitModificationForm()" type="submit" severity="success"></button>
+  </div>
+</ng-template>
     <p-toast></p-toast>
   </p-dialog>
   <p-toast position="top-right"></p-toast>
   <p-confirmDialog header="Confirmation" icon="pi pi-exclamation-triangle" [style]="{ width: '450px' }"
+    acceptLabel="Oui" rejectLabel="Non"></p-confirmDialog>
+      <p-confirmDialog header="Confirmation" icon="pi pi-exclamation-triangle" [style]="{ width: '450px' }"
     acceptLabel="Oui" rejectLabel="Non"></p-confirmDialog>
     
    
@@ -3063,7 +3137,8 @@ Problème de validation pour :
               <th style="width: 20%">Référence</th>
               <th style="width: 15%">Révision</th>
               <th style="width: 20%">Date d'application</th>
-              <th style="width: 20%">Actions</th>
+              <th style="width: 20%">Modifier</th>
+              <th style="width: 20%">Supprimer</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-entete>
@@ -3075,9 +3150,10 @@ Problème de validation pour :
               <td>
                 <button pButton icon="pi pi-pencil" class="p-button-rounded p-button-text  p-mr-2"
                   (click)="editEntete(entete)"></button>
-                <button pButton icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger"
-                  (click)="confirmDeleteEntete(entete)"></button>
+              
               </td>
+              <td>  <button pButton icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger"
+                  (click)="confirmDeleteEntete(entete)"></button></td>
             </tr>
           </ng-template>
         </p-table>

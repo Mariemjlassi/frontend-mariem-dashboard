@@ -52,7 +52,18 @@ export class EmployeListComponent implements OnInit {
   employes: EmployeExistant[] = [];
   selectedEmployees: any[] = [];
   globalFilter: string = ''; 
-  @ViewChild('dt') dt: Table | undefined;
+@ViewChild('dt') dt!: Table;
+
+ applyFilter(): void {
+    if (this.dt) {
+      this.dt.filterGlobal(this.globalFilter, 'contains');
+    }
+  }
+
+  clearFilter(): void {
+    this.globalFilter = '';
+    this.applyFilter();
+  }
   storedEmployeInfo: any = null;
 
   constructor(private employeService: EmoloyeService, private router: Router) {}

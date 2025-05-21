@@ -64,7 +64,80 @@ employeeDirection: string = '';
   });
 }
 
-  
+openPrintWindow() {
+  const printContents = document.getElementById('ficheImpression')?.innerHTML;
+  const popupWin = window.open('', '_blank', 'top=0,left=0,height=100%,width=auto');
+
+  if (popupWin && printContents) {
+    popupWin.document.open();
+    popupWin.document.write(`
+      <html>
+        <head>
+          <title>Impression</title>
+          <base href="${document.baseURI}">
+          <style>
+            @media print {
+              @page {
+                margin: 2cm;
+                @top-center {
+                  content: element(print-header);
+                }
+                @bottom-center {
+                  content: element(print-footer);
+                }
+              }
+
+              body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+              }
+
+              header {
+                position: running(print-header);
+              }
+
+              footer {
+                position: running(print-footer);
+              }
+
+              table {
+                border-collapse: collapse;
+                width: 100%;
+              }
+
+              th, td {
+                border: 1px solid black;
+                padding: 6px;
+              }
+
+              textarea {
+                border: 1px solid black;
+              }
+
+              .no-print {
+                display: none !important;
+              }
+
+              tr, td, th {
+                page-break-inside: avoid;
+              }
+
+              main {
+                page-break-inside: auto;
+              }
+            }
+          </style>
+        </head>
+        <body onload="window.print(); window.close()">
+          ${printContents}
+        </body>
+      </html>
+    `);
+    popupWin.document.close();
+  }
+}
+
+
 
   getPosteForFormation(formationId: number): void {
     this.formationPosteService.getPosteByFormationId(formationId).subscribe({

@@ -509,9 +509,9 @@ table, th, td {
 /* Style des sections */
 .section-title {
   color: #002366;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e0e0e0;
+   font-weight: bold;
+  font-size: 1.2rem;
+   justify-content: center;
 }
 
 /* Style du formulaire */
@@ -726,4 +726,201 @@ label {
 .p-dropdown-panel {
   border-radius: 6px !important;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+}
+/* Structure principale */
+.ft-dialog__container {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    border-radius: 16px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+    border: none;
+    overflow: hidden;
+    background: #ffffff;
+    transform: translateZ(0);
+}
+
+/* En-tête */
+.ft-dialog__container .p-dialog-header {
+    background: linear-gradient(135deg, #3f51b5, #2196f3);
+    color: white;
+    padding: 1.5rem;
+    border-bottom: none;
+    display: flex;
+    align-items: center;
+}
+
+.ft-dialog__container .p-dialog-title {
+    font-weight: 600;
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.ft-dialog__container .p-dialog-title:before {
+    content: "\f19d";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 1.4em;
+}
+
+/* Contenu */
+.ft-dialog__content {
+    padding: 2rem;
+    background: #fafcff;
+    color: #2b2d42;
+}
+
+/* Cartes d'information */
+.ft-dialog__card {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    border-left: 4px solid #3f51b5;
+    margin-bottom: 1.2rem;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.ft-dialog__card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-left-color: #2196f3;
+}
+
+.ft-dialog__card-icon {
+    font-size: 1.4rem;
+    color: #3f51b5;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(63, 81, 181, 0.1);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.ft-dialog__card-content {
+    flex-grow: 1;
+}
+
+.ft-dialog__card-label {
+    font-weight: 600;
+    color: #5a5a5a;
+    margin-bottom: 0.3rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ft-dialog__card-value {
+    color: #2b2d42;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+/* Badge de statut */
+.ft-dialog__status {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.ft-dialog__status-badge {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ft-dialog__status--planned {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.ft-dialog__status--in-progress {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.ft-dialog__status--completed {
+    background: #f3e5f5;
+    color: #6a1b9a;
+}
+
+/* Pied de dialogue */
+.ft-dialog__container .p-dialog-footer {
+    padding: 1.2rem 2rem;
+    background: #fafcff;
+    border-top: 1px solid #e6eef7;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Boutons */
+.ft-dialog__button {
+    border: none;
+    padding: 0.8rem 1.8rem;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-size: 0.95rem;
+}
+::ng-deep .modern-dialog .p-dialog-header {
+  justify-content: center; /* centrer horizontalement */
+}
+
+::ng-deep .modern-dialog .p-dialog-title {
+  color: #003366; /* bleu marine */
+  font-weight: bold;
+  font-size:2rem;
+}
+
+.ft-dialog__button--close {
+    background: linear-gradient(135deg, #3f51b5, #2196f3);
+    color: white;
+}
+
+.ft-dialog__button--close:hover {
+    background: linear-gradient(135deg, #3949a3, #0d8aee);
+    box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+}
+
+.ft-dialog__button-icon {
+    font-size: 0.9em;
+}
+
+/* Animations */
+@keyframes ft-dialog__anim--enter {
+    0% { opacity: 0; transform: scale(0.96) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+::ng-deep .p-dialog {
+    animation: ft-dialog__anim--enter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .ft-dialog__container {
+        width: 95vw !important;
+        max-width: 95vw;
+    }
+    
+    .ft-dialog__card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .ft-dialog__card-icon {
+        margin-bottom: 0.8rem;
+    }
 }

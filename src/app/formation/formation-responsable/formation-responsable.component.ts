@@ -559,7 +559,7 @@ this.isDocumentCompatible = false;
           summary: 'Document incompatible',
           detail: `Le document sélectionné n'est pas pour cet employé (${nomEmploye} - ${matricule}). Veuillez vérifier.`
         });
-      } else if (word1Found && !word2Found) {
+      } /*else if (word1Found && !word2Found) {
         // Cas 2: word1Found true, word2Found false
         console.log('Document partiellement compatible - problème de formation ou format');
         this.messageService.add({
@@ -567,7 +567,7 @@ this.isDocumentCompatible = false;
           summary: 'Problème de formation',
           detail: 'Cette fiche est bien pour cet employé mais ne correspond pas à cette formation ou il y a un problème de format. Veuillez vérifier.'
         });
-      } else if (!word1Found && !word2Found) {
+      } */else if (!word1Found && !word2Found) {
         // Cas 3: word1Found false, word2Found false
         console.log('Document totalement incompatible');
         this.messageService.add({

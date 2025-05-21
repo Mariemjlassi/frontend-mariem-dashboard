@@ -17,28 +17,28 @@ export class AuthService {
     SignupRequest.role = 'RH';
     const url = this.baseUrl + 'signup/rh';
     const headers = this.createAuthorizationHeader();
-    return this.http.post(url, SignupRequest);
+    return this.http.post(url, SignupRequest, {headers});
   }
 
   registerDirecteur(SignupRequest: any): Observable<any> {
     SignupRequest.role = 'DIRECTEUR';
     const url = this.baseUrl + 'signup/directeur';
     const headers = this.createAuthorizationHeader();
-    return this.http.post(url, SignupRequest);
+    return this.http.post(url, SignupRequest, {headers});
   }
 
   registerResponsable(SignupRequest: any): Observable<any> {
     SignupRequest.role = 'RESPONSABLE';
     const url = this.baseUrl + 'signup/responsable';
     const headers = this.createAuthorizationHeader();
-    return this.http.post(url, SignupRequest);
+    return this.http.post(url, SignupRequest, {headers});
   }
 
   registerAdmin(SignupRequest: any): Observable<any> {
     SignupRequest.role = 'ADMIN';
     const url = this.baseUrl + 'signup/admin';
     const headers = this.createAuthorizationHeader();
-    return this.http.post(url, SignupRequest);
+    return this.http.post(url, SignupRequest, {headers});
   }
 
   login(loginRequest: LoginRequest): Observable<any> {

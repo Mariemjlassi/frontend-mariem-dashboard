@@ -3,7 +3,6 @@
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-bottom: 2rem;
-    margin-left: 30px
   }
   
   .card-content {
@@ -521,4 +520,19 @@ label.font-semibold.text-gray-700 {
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1rem;
+}
+/* Pour cibler tous les textarea dans votre composant */
+textarea {
+  min-height: 150px;
+  height: auto;
+   min-width:   550px;
+  width: auto;
+  resize: vertical; /* Permet à l'utilisateur de redimensionner verticalement */
+}
+
+/* Ou pour cibler spécifiquement ceux avec la classe pInputTextarea */
+.p-inputtextarea {
+  min-height: 150px;
+    min-width: 550px;
+  height: auto;
 }

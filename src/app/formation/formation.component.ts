@@ -47,6 +47,7 @@ import { MessageModule } from 'primeng/message';
 import { ChipModule } from 'primeng/chip';
 import { PeriodeFormationDto } from './model/periode-formation-dto';
 import { EnteteService } from './service/entete.service';
+import { Router } from '@angular/router';
 
 
 
@@ -178,7 +179,7 @@ constructor(private fb: FormBuilder,
   private changeDetectorRef: ChangeDetectorRef,
   private directionservice: DirectionService,
   private formationPosteService: FormationPosteService,
-  
+  private router: Router,
   private confirmationService: ConfirmationService,
   private ngZone: NgZone,
   
@@ -240,7 +241,7 @@ constructor(private fb: FormBuilder,
     fichierPdf: [null] ,// Ajouter un contrôle pour le fichier PDF
     selectedCitiesModif: [[]],
     responsableType: [null],
-    entete: [null, Validators.required ],
+    entete: [null],
    
     
     // Contrôles dynamiques pour les parties
@@ -887,126 +888,139 @@ editComment(formation: FormationDto) {
     this.displayDialog = false;
   }
   currentPoste: any;
-  // Méthode pour ouvrir la popup de modification
-  openModificationDialog(formation: any) {
-    this.loadEntetes();
-    this.selectedResponsableTypeModif = (formation.sousTypeFormation === 'INTEGRATION' || formation.sousTypeFormation === 'POLYVALENCE')
+openModificationDialog(formation: any) {
+  console.log('--- openModificationDialog appelé ---');
+  console.log('Formation reçue:', formation);
+
+  this.loadEntetes();
+
+  // Type responsable par défaut
+  this.selectedResponsableTypeModif = (formation.sousTypeFormation === 'INTEGRATION' || formation.sousTypeFormation === 'POLYVALENCE')
     ? 'INTERNE'
     : formation.responsableEvaluationId ? 'INTERNE' : 'EXTERNE';
 
-    this.selectedFormation = formation;
-    this.initializePeriodesModif(formation);
-    this.displayModificationDialog = true;
-    this.periodesModif = formation.periodes ? formation.periodes.map((periode: any) => ({
-      ...periode,
-      dateDebut: new Date(periode.dateDebut),
-      dateFin: new Date(periode.dateFin)
-  })) : [];
-  
-    if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
-      this.modificationForm.get('sousTypeFormation')?.disable();
+  this.selectedFormation = formation;
+
+  this.initializePeriodesModif(formation);
+
+  // Conversion des dates des périodes en Date()
+  this.periodesModif = formation.periodes?.map((periode: any) => ({
+    ...periode,
+    dateDebut: new Date(periode.dateDebut),
+    dateFin: new Date(periode.dateFin)
+  })) || [];
+  console.log('Périodes modifiées:', this.periodesModif);
+
+  // Gestion du champ sousTypeFormation
+  if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
+    this.modificationForm.get('sousTypeFormation')?.disable();
   } else {
-      this.modificationForm.get('sousTypeFormation')?.enable();
+    this.modificationForm.get('sousTypeFormation')?.enable();
   }
-    // Récupérer les IDs des employés de la formation (pour TOUS les types de formation)
-    const employeIds = formation.employes.map((emp: any) => emp.id);
-   
-    // Pré-sélectionner les employés dans le formControl (pour TOUS les types de formation)
-    this.modificationForm.patchValue({
-        selectedCitiesModif: employeIds
+
+  // --- Construction selectedEmployees sans utiliser cities ---
+  console.log('Formation.employes:', formation.employes);
+
+  this.selectedEmployees = formation.employes?.map((emp: any) => {
+    const empName = emp.name || `${emp.nom} ${emp.prenom}`;
+    console.log(`Traitement employé id=${emp.id} - name=${empName} - matricule=${emp.matricule}`);
+    return {
+      id: emp.id,
+      code: emp.id, // code utilisé pour optionValue dans p-multiselect
+      name: empName,
+      matricule: emp.matricule
+    };
+  }) || [];
+  console.log('SelectedEmployees construits:', this.selectedEmployees);
+
+  const employeIds = this.selectedEmployees.map(e => e.id);
+  console.log('IDs employés extraits pour patch:', employeIds);
+
+  // Patch du formulaire AVANT d'ouvrir le dialogue (important)
+  this.modificationForm.patchValue({
+    sousTypeFormation: formation.sousTypeFormation,
+    selectedCitiesModif: employeIds,
+    employeIds: employeIds
+  });
+
+  // Ouverture du dialogue
+  this.displayModificationDialog = true;
+
+  // Gestion spécifique POLYCOMPETENCE
+if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
+  this.selectedRadioModif = {};
+  this.editingEmployeeModif = {};
+  
+  formation.employes?.forEach((emp: any) => {
+    console.log(`Récupération résultat formation pour employé id=${emp.id}`);
+    this.formationservice.getResultatFormation(formation.id, emp.id).subscribe({
+      next: (result) => {
+        console.log(`Résultat pour employé ${emp.id}:`, result);
+        this.selectedRadioModif[emp.id] = result.resultat;
+        this.editingEmployeeModif[emp.id] = false; // Initialiser l'état d'édition
+        this.changeDetectorRef.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erreur récupération résultat', err);
+        this.selectedRadioModif[emp.id] = '';
+        this.editingEmployeeModif[emp.id] = false;
+      }
     });
-
-    // Initialiser la liste des employés sélectionnés (pour TOUS les types de formation)
-    this.selectedEmployeesModif = this.cities
-        .filter(city => employeIds.includes(city.code))
-        .map(city => ({
-            ...city,
-            name: city.name || `${city.nom} ${city.prenom}`
-        }));
-
-    // Traitement spécifique à POLYCOMPETENCE
-    if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
-        this.selectedRadioModif = {};
-        
-        // Charger les résultats existants
-        formation.employes.forEach((emp: any) => {
-            this.formationservice.getResultatFormation(formation.id, emp.id).subscribe({
-                next: (result) => {
-                    this.selectedRadioModif[emp.id] = result.resultat;
-                    this.changeDetectorRef.detectChanges();
-                },
-                error: (err) => {
-                    console.error('Erreur récupération résultat', err);
-                    this.selectedRadioModif[emp.id] = '';
-                }
-            });
-        });
-    }
-// Initialiser le type de responsable
-this.selectedResponsableTypeModif = formation.responsableEvaluationId ? 'INTERNE' : 'EXTERNE';
-    // Trouver le poste actuel
+  });
+}else {
     this.formationPosteService.getPosteByFormationId(formation.id).subscribe({
       next: (poste) => {
-        // Met à jour le champ du formulaire avec le poste récupéré
-        this.modificationForm.patchValue({
-          titrePoste: poste
-        });
-    
-        // Si le poste a un document PDF, le charger
-        if (poste && poste.document) {
+        console.log('Poste récupéré:', poste);
+        this.modificationForm.patchValue({ titrePoste: poste });
+
+        if (poste?.document) {
           this.loadPdfIntoIframe(poste.document);
         } else {
           this.pdfUrl = null;
         }
-    
-        // Détection de changements
+
         this.changeDetectorRef.detectChanges();
       },
       error: (err) => {
-        console.error("Erreur lors de la récupération du poste", err);
-        this.modificationForm.patchValue({
-          titrePoste: null
-        });
+        console.error("Erreur récupération poste", err);
+        this.modificationForm.patchValue({ titrePoste: null });
       }
     });
-    
-    this.selectedResponsableTypeModif = formation.responsableEvaluationId ? 'INTERNE' : 'EXTERNE';
-    const currentEntete = this.entetes.find(e => e.id === formation.entete.id);
-    // Remplir le formulaire
-    this.modificationForm.patchValue({
-        titre: formation.titre,
-        description: formation.description,
-        typeFormation: formation.typeFormation,
-        sousTypeFormation: formation.sousTypeFormation,
-        dateDebutPrevue: new Date(formation.dateDebutPrevue),
-        dateFinPrevue: new Date(formation.dateFinPrevue),
-        responsableType: this.selectedResponsableTypeModif,  // <-- Ajoutez cette ligne
-        responsableEvaluationId: formation.responsableEvaluation?.id || null,
-        responsableEvaluationExterne: formation.responsableEvaluationExterne || '',
-        employeIds: employeIds,
-        titrePoste: this.currentPoste,
-        reference: formation.reference || '',
-        revisionNumber: formation.revisionNumber || '',
-        dateApplication: new Date(formation.dateApplication),
-        entete: currentEntete, 
-        // Note: selectedCitiesModif est déjà défini plus haut
-    });
-   
-    if (formation.sousTypeFormation === 'INTEGRATION' || formation.sousTypeFormation === 'POLYVALENCE') {
-
-
-
-
-      
-      this.modificationForm.get('typeFormation')?.disable();
-      this.modificationForm.get('responsableType')?.disable();
-      this.modificationForm.get('responsableType')?.setValue('INTERNE'); // <-- Sécurité supplémentaire
-  } else {
-      this.modificationForm.get('typeFormation')?.enable();
-      this.modificationForm.get('responsableType')?.enable();
   }
-    this.changeDetectorRef.detectChanges(); 
 
+  // Patch autres champs
+  const currentEntete = formation.entete ? this.entetes.find(e => e.id === formation.entete.id) : null;
+  console.log('Entête formation sélectionnée:', currentEntete);
+
+  this.modificationForm.patchValue({
+    titre: formation.titre,
+    description: formation.description,
+    typeFormation: formation.typeFormation,
+    sousTypeFormation: formation.sousTypeFormation,
+    dateDebutPrevue: new Date(formation.dateDebutPrevue),
+    dateFinPrevue: new Date(formation.dateFinPrevue),
+    responsableType: this.selectedResponsableTypeModif,
+    responsableEvaluationId: formation.responsableEvaluation?.id || null,
+    responsableEvaluationExterne: formation.responsableEvaluationExterne || '',
+    reference: formation.reference || '',
+    revisionNumber: formation.revisionNumber || '',
+    dateApplication: new Date(formation.dateApplication),
+    entete: currentEntete,
+  });
+
+  // Activation / désactivation selon sous-type
+  if (formation.sousTypeFormation === 'INTEGRATION' || formation.sousTypeFormation === 'POLYVALENCE') {
+    this.modificationForm.get('typeFormation')?.disable();
+    this.modificationForm.get('responsableType')?.disable();
+    this.modificationForm.get('responsableType')?.setValue('INTERNE');
+  } else {
+    this.modificationForm.get('typeFormation')?.enable();
+    this.modificationForm.get('responsableType')?.enable();
+  }
+
+  this.changeDetectorRef.detectChanges();
+
+  console.log('Modification dialog prêt avec formulaire patché');
 }
 
 
@@ -1014,7 +1028,7 @@ shouldShowEnteteSectionModif(): boolean {
   return this.modificationForm.get('sousTypeFormation')?.value === 'INTEGRATION' || 
          this.modificationForm.get('sousTypeFormation')?.value === 'POLYVALENCE';
 }
-// Ajoutez cette méthode pour filtrer les options de sous-type
+// joutez cette méthode pour filtrer les options de sous-type
 getFilteredSousTypes(): any[] {
   const currentSousType = this.modificationForm.get('sousTypeFormation')?.value;
   const typeFormation = this.modificationForm.get('typeFormation')?.value;
@@ -2135,6 +2149,19 @@ getResultatLabel(resultat: string): string {
   return option ? option.label : 'non évalué';
 }
 checkBeforeEdit(employe: any) {
+  if ((this.selectedFormation?.sousTypeFormation === 'INTEGRATION' || 
+       this.selectedFormation?.sousTypeFormation === 'POLYVALENCE') &&
+      employe.resultat === 'REUSSI') {
+    
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Action impossible',
+      detail: 'Vous ne pouvez pas modifier ce résultat car l\'employé a déjà acquis les compétences de ce poste',
+      life: 5000  // Durée d'affichage en ms
+    });
+    return;
+  }
+
   if (employe.resultat === 'PROGRAMME_COMPLEMENTAIRE') {
     this.confirmationService.confirm({
       message: 'Vous ne pouvez pas modifier ce résultat car une formation complémentaire a déjà été lancée pour cet employé',
@@ -2147,7 +2174,11 @@ checkBeforeEdit(employe: any) {
   }
   this.resetResultat(employe);
 }
-
+showDocumentColumn(): boolean {
+  return this.selectedFormation?.valide && 
+         (this.selectedFormation?.sousTypeFormation === 'POLYVALENCE' || 
+          this.selectedFormation?.sousTypeFormation === 'INTEGRATION');
+}
 isConfirming : boolean = false;
 updateResultat(formationId: number, employeId: number, resultat: string, employe: any) {
   // Vérifier si c'est une formation POLYCOMPETENCE
@@ -2170,77 +2201,74 @@ updateResultat(formationId: number, employeId: number, resultat: string, employe
         });
       },
     });
-  } 
+  }
   // Cas spécial pour INTEGRATION - affichage direct du dialogue
   else if (this.selectedFormation?.sousTypeFormation === 'INTEGRATION' && resultat === 'REUSSI') {
     this.showDirectionSiteDialog(formationId, employe);
   }
   // Cas normal pour les autres formations (y compris POLYVALANCE)
-  else if (resultat === 'REUSSI') {
+else if (resultat === 'REUSSI') {
     this.confirmationService.confirm({
         message: `Êtes-vous sûr que l'employé ${employe.nom} ${employe.prenom} a réussi cette formation ?`,
         header: 'Confirmation de réussite',
         icon: 'pi pi-exclamation-triangle',
         accept: () => {
-            employe.tempResultat = 'REUSSI';
-            
-            // Deuxième confirmation pour changement de poste
-            this.confirmationService.confirm({
-                message: `Voulez-vous passer cet employé à un autre poste comme poste actuel ?`,
-                header: 'Changement de poste',
-                icon: 'pi pi-info-circle',
-                accept: () => {
-                    this.showDirectionSiteDialog(formationId, employe);
-                },
-                reject: () => {
-                    // Appel du service pour enregistrer le résultat
-                    this.formationservice.ajouterResultatFormation(formationId, employe.id, 'REUSSI').subscribe({
-                        next: (response) => {
-                            // Afficher d'abord le message toast de succès
-                            this.messageService.add({
-                                severity: 'success',
-                                summary: 'Succès',
-                                detail: 'Résultat mis à jour avec succès !'
-                            });
-                            
-                            // Puis afficher le message dans une boîte de dialogue
-                            this.confirmationService.confirm({
-                                message: `L'employé ${employe.nom} ${employe.prenom} reste à son poste actuel mais a bien réussi cette formation et peut l'exercer .`,
-                                header: 'Information',
-                                icon: 'pi pi-check-circle',
-                                acceptLabel: 'OK',
-                                rejectVisible: false, // Cache le bouton Non
-                                accept: () => {
-                                    employe.resultat = 'REUSSI';
-                                    employe.tempResultat = null;
-                                }
-                            });
-                        },
-                        error: (err) => {
-                            this.messageService.add({
-                                severity: 'error',
-                                summary: 'Erreur',
-                                detail: 'Une erreur est survenue lors de la mise à jour du résultat.'
-                            });
-                        }
-                    });
-                }
-            });
+            employe.tempResultat = 'REUSSI';            // :danger: Utilisez setTimeout pour éviter le conflit
+            setTimeout(() => {
+                this.confirmationService.confirm({
+                    message: `Voulez-vous passer cet employé à un autre poste comme poste actuel ?`,
+                    header: 'Changement de poste',
+                    icon: 'pi pi-info-circle',
+                    accept: () => {
+                        this.showDirectionSiteDialog(formationId, employe);
+                    },
+                    reject: () => {
+                        this.formationservice.ajouterResultatFormation(formationId, employe.id, 'REUSSI').subscribe({
+                            next: (response) => {
+                                this.messageService.add({
+                                    severity: 'success',
+                                    summary: 'Succès',
+                                    detail: 'Résultat mis à jour avec succès !'
+                                });                                // :danger: Encore un setTimeout pour la 3ème boîte
+                                setTimeout(() => {
+                                    this.confirmationService.confirm({
+                                        message: `L'employé ${employe.nom} ${employe.prenom} reste à son poste actuel mais a bien réussi cette formation et peut l'exercer.`,
+                                        header: 'Information',
+                                        icon: 'pi pi-check-circle',
+                                        acceptLabel: 'OK',
+                                        rejectVisible: false,
+                                        accept: () => {
+                                            employe.resultat = 'REUSSI';
+                                            employe.tempResultat = null;
+                                        }
+                                    });
+                                }, 300); // Délai de 300ms
+                            },
+                            error: (err) => {
+                                this.messageService.add({
+                                    severity: 'error',
+                                    summary: 'Erreur',
+                                    detail: 'Une erreur est survenue lors de la mise à jour du résultat.'
+                                });
+                            }
+                        });
+                    }
+                });
+            }, 300); // :danger: Délai de 300ms pour éviter le conflit
         },
         reject: () => {
             employe.resultat = null;
             employe.tempResultat = null;
         }
     });
-  }    else if (resultat === 'PROGRAMME_COMPLEMENTAIRE') {
+}   else if (resultat === 'PROGRAMME_COMPLEMENTAIRE') {
     this.confirmationService.confirm({
       message: `Vous avez sélectionné "Programme Complémentaire" pour ${employe.nom} ${employe.prenom}. Souhaitez-vous créer une nouvelle formation pour cet employé ?`,
       header: 'Programme Complémentaire',
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.prepareComplementaryProgramForm(employe, this.selectedFormation);
-        this.displayComplementaryProgramDialog = true;
-      },
+        this.displayComplementaryProgramDialog = true;      },
       reject: () => {
         // Ne rien faire - l'utilisateur a annulé la sélection
         employe.tempResultat = null; // Réinitialiser la sélection temporaire
@@ -2269,6 +2297,10 @@ updateResultat(formationId: number, employeId: number, resultat: string, employe
     });
   }
 }
+
+
+
+
 
 prepareComplementaryProgramForm(employe: any, formation: any) {
   this.selectedEmployeeForComplementary = employe;
@@ -2382,10 +2414,14 @@ submitComplementaryProgram() {
             this.formationPosteService.addPair(formationId, this.posteSelectionne.id).subscribe({
               next: () => {
                 console.log('Paire formation-poste ajoutée avec succès');
+              
                 this.displayFormationPosteList();
                 this.showSuccessMessage();
                 this.closeComplementaryDialog();
-                this.loadFormations();
+                this.confirmationService.close();
+
+
+               
               },
               error: (posteError) => {
                 console.error('Erreur ajout paire formation-poste:', posteError);
@@ -2613,6 +2649,7 @@ onPosteAssignmentDialogHide() {
   this.selectedSite = null;
 }
 
+
 // Réinitialiser le résultat (pour permettre une nouvelle sélection)
 resetResultat(employe: any) {
   employe.resultat = null;
@@ -2640,8 +2677,11 @@ editingEmployeeModif: { [key: string]: boolean } = {};
 
 // Méthodes pour la modification
 isPolycompetenceModif(): boolean {
-  return this.modificationForm.get('sousTypeFormation')?.value?.toLowerCase() === 'polycompetence';
+  const result = this.selectedFormation?.sousTypeFormation === 'POLYCOMPETENCE';
+  console.log('isPolycompetenceModif:', result);
+  return result;
 }
+
 
 shouldShowPosteSectionModif(): boolean {
   const sousType = this.modificationForm.get('sousTypeFormation')?.value;
@@ -2883,19 +2923,26 @@ validateDateOverlap(index: number) {
 // Variables de classe
 nombrePartiesInitial: number = 0;
 
-
 initialiserParties() {
-  const nbProgrammes = this.posteSelectionne?.lesProgrammesDeFormation?.length || 0;
+  // Vérifier d'abord si un poste est sélectionné et a des programmes
+  if (!this.posteSelectionne || !this.posteSelectionne.lesProgrammesDeFormation) {
+    this.nombrePartiesInitial = 0;
+    this.nombrePartiesArray = [];
+    return;
+  }
+
+  const nbProgrammes = this.posteSelectionne.lesProgrammesDeFormation.length;
   console.log(`Initialisation des parties, nombre de programmes : ${nbProgrammes}`);
+  
+  // Initialiser les variables
   this.nombrePartiesInitial = nbProgrammes;
   this.nombrePartiesArray = Array.from({ length: nbProgrammes }, (_, i) => i);
 
-  // Vérifier que le tableau de parties est correctement initialisé
   console.log('Tableau des parties initialisées :', this.nombrePartiesArray);
+  console.log('Nombre initial de parties :', this.nombrePartiesInitial);
 
   this.creerControlesParties();
 }
-
 creerControlesParties() {
   // Supprimer les anciens contrôles
   for (let i = 0; i < 10; i++) {
@@ -2957,7 +3004,17 @@ creerControlesParties() {
 
 // Vérifie si on peut ajouter une partie
 peutAjouterPartie(): boolean {
-  return this.nombrePartiesArray.length < this.nombrePartiesInitial;
+  // Vérifier d'abord si un poste est sélectionné
+  if (!this.posteSelectionne || !this.posteSelectionne.lesProgrammesDeFormation) {
+    return false;
+  }
+
+  const maxParties = this.posteSelectionne.lesProgrammesDeFormation.length;
+  const canAdd = this.nombrePartiesArray.length < maxParties;
+  
+  console.log(`Peut ajouter partie? Max: ${maxParties}, Actuel: ${this.nombrePartiesArray.length}, Résultat: ${canAdd}`);
+  
+  return canAdd;
 }
 ajouterPartie() {
   if (this.peutAjouterPartie()) {
@@ -3146,13 +3203,14 @@ deleteEntete(entete: Entete) {
       });
       this.loadEntetes(); // Recharger la liste
     },
-    error => {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Erreur',
-        detail: 'Erreur lors de la suppression'
-      });
-    }
+error => {
+  this.messageService.add({
+    severity: 'error',
+    summary: 'Suppression impossible',
+    detail: 'Cette entête est utilisée dans une ou plusieurs formations. Veuillez d’abord la supprimer ou la remplacer dans toutes les formations concernées.'
+  });
+}
+
   );
 }
 // Dans votre composant, avec les autres variables
@@ -3188,5 +3246,6 @@ handleErrorr(summary: string, error: any) {
     detail: error.message || 'Une erreur est survenue'
   });
 }
+
 
 }

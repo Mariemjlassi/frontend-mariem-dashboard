@@ -7,7 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { Site } from '../model/site';
 import { SiteService } from '../service/site.service';
-import { MenuItem } from 'primeng/api';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { DialogModule } from 'primeng/dialog';
 import { DirectionService } from '../../direction/service/direction.service';
@@ -16,6 +16,8 @@ import { PickListModule } from 'primeng/picklist';
 import { MultiSelectModule } from 'primeng/multiselect';
 
 import { Poste } from '../../poste/model/poste';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 
 
 @Component({
@@ -29,8 +31,11 @@ import { Poste } from '../../poste/model/poste';
     CommonModule,
     SpeedDialModule,
     PickListModule,
-    MultiSelectModule
+    MultiSelectModule,
+    ToastModule,
+    ConfirmDialogModule,
   ],
+   providers: [ConfirmationService,MessageService],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './list-site.component.html',
   styleUrl: './list-site.component.css'
@@ -50,7 +55,9 @@ export class ListSiteComponent implements OnInit {
   @ViewChild('dt') dt!: Table;
   mapHeight: string = '300px'; // Valeur initiale de la carte
 
-  constructor(private siteService: SiteService, private directionservice: DirectionService) {}
+  constructor(private siteService: SiteService, private directionservice: DirectionService,
+    private messageService: MessageService, private confirmationService: ConfirmationService,
+  ) {}
 
   ngOnInit(): void {
     this.getSites();
@@ -59,6 +66,12 @@ export class ListSiteComponent implements OnInit {
   onDirectionsListShow() {
     this.mapHeight = '500px'; // Augmenter la taille de la carte lorsque la liste des directions est ouverte
   }
+isDuplicateSiteName(name: string, currentId: number = 0): boolean {
+  const cleanedName = name.trim().toLowerCase().replace(/\s+/g, ' ');
+  return this.sites.some(site => 
+    site.id !== currentId && site.nom_site.trim().toLowerCase().replace(/\s+/g, ' ') === cleanedName
+  );
+}
 
   // Fonction appelée lorsque la liste des directions est fermée
   onDirectionsListHide() {
@@ -107,27 +120,60 @@ export class ListSiteComponent implements OnInit {
   }
 
 
-  archiveSite(site: Site): void {
-    if (site.id !== undefined) {
-      if (confirm(`Voulez-vous vraiment archiver le site ${site.nom_site} ?`)) {
-        // Appel de la méthode du service pour archiver le site
-        this.siteService.archiverSite(site.id).subscribe({
-          next: (response) => {
-            // Une fois archivé, mettre à jour localement la propriété 'archive'
-            site.archive = true;  // Mise à jour du site localement
-            console.log('Site archivé avec succès', response);
-            this.getSites(); 
-          },
-          error: (err) => {
-            console.error('Erreur lors de l\'archivage du site', err);
-          }
+archiveSite(site: Site): void {
+  if (site.id !== undefined) {
+    this.siteService.archiverSite(site.id).subscribe({
+      next: (response) => {
+        site.archive = true;
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Archivé',
+          detail: `Le site "${site.nom_site}" a été archivé avec succès.`,
+        });
+        this.getSites();
+      },
+      error: (err) => {
+        console.error('Erreur lors de l\'archivage du site', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Erreur',
+          detail: `Impossible d'archiver le site "${site.nom_site}".`,
         });
       }
-    } else {
-      console.error('L\'ID du site est indéfini');
-    }
+    });
+  } else {
+    console.error('L\'ID du site est indéfini');
   }
-  
+}
+
+confirmArchive(site: Site): void {
+  this.confirmationService.confirm({
+    header: 'Confirmation d\'archivage',
+    message: `Voulez-vous vraiment archiver le site "${site.nom_site}" ? Cette action est réversible.`,
+    icon: 'pi pi-exclamation-triangle',
+    acceptButtonProps: {
+      label: 'Oui, archiver',
+      icon: 'pi pi-check',
+       severity: 'danger',
+    },
+    rejectButtonProps: {
+      label: 'Annuler',
+      icon: 'pi pi-times',
+      severity: 'secondary',
+    },
+    accept: () => {
+      this.archiveSite(site);
+    },
+    reject: () => {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Annulé',
+        detail: 'Archivage annulé',
+      });
+    },
+  });
+}
+
 
 
 // Méthode pour éditer un site
@@ -144,25 +190,37 @@ editSite(site: Site): void {
   }
 // Dans list-site.component.ts
 updateSiteName(): void {
-  if (this.selectedSite.id && this.selectedSite.nom_site.trim() !== '') {
-    this.siteService.updateSiteName(this.selectedSite.id, this.selectedSite.nom_site)
-      .subscribe({
-        next: (updatedSite) => {
-          // Met à jour la liste des sites avec le nom modifié
-          const index = this.sites.findIndex(site => site.id === updatedSite.id);
-          if (index !== -1) {
-            this.sites[index] = updatedSite;  // Remplace le site avec l'ID correspondant
-          }
-          console.log('Nom du site mis à jour avec succès', updatedSite);
-          this.visible = false; // Ferme le dialogue d'édition
-        },
-        error: (err) => {
-          console.error('Erreur lors de la mise à jour du nom du site', err);
-        }
-      });
-  } else {
-    alert('Le nom du site ne peut pas être vide.');
+  const cleanedName = this.selectedSite.nom_site?.trim();
+
+  if (!cleanedName) {
+    this.messageService.add({ severity: 'warn', summary: 'Validation', detail: 'Le nom du site ne peut pas être vide.' });
+    return;
   }
+
+  const id = this.selectedSite.id;
+  if (id === undefined || id === null) {
+    this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'ID du site manquant.' });
+    return;
+  }
+
+  if (this.isDuplicateSiteName(cleanedName, id)) {
+    this.messageService.add({ severity: 'error', summary: 'Duplication', detail: 'Un site avec ce nom existe déjà.' });
+    return;
+  }
+
+  this.siteService.updateSiteName(id, cleanedName)
+    .subscribe({
+      next: (updatedSite) => {
+        const index = this.sites.findIndex(site => site.id === updatedSite.id);
+        if (index !== -1) this.sites[index] = updatedSite;
+        this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Nom du site mis à jour.' });
+        this.visible = false;
+      },
+      error: (err) => {
+        this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de la mise à jour du site.' });
+        console.error(err);
+      }
+    });
 }
 
   
@@ -170,46 +228,85 @@ updateSiteName(): void {
   
 
  
-  addSite(): void {
-    if (this.newSite.nom_site.trim() !== '') {
-      // Créer l'objet site avec uniquement les IDs des directions et des postes sélectionnés
-      const siteSansId = { 
-        nom_site: this.newSite.nom_site, 
-        archive: false,
-        directionIds: this.selectedDirections.map(direction => direction.id), // Extraire uniquement les IDs des directions
-        postesIds: this.selectedPostes.map(poste => poste.id) // Extraire uniquement les IDs des postes
-      };
-  
-      // Affichage de l'objet site dans la console avant l'envoi au backend
-      console.log('Objet site envoyé au backend (avec les IDs des directions et postes seulement):', siteSansId);
-  
-      // Appel du service pour ajouter le site
-      this.siteService.ajouterSite(siteSansId).subscribe({
-        next: (siteAjoute) => {
-          this.sites.push(siteAjoute); // Ajouter le site à la liste locale
-          console.log('Site ajouté avec succès:', siteAjoute);
-          this.showDialog = false; // Fermer la boîte de dialogue après l'ajout
-          this.newSite = { id: 0, nom_site: '', archive: false }; // Réinitialiser le formulaire
-          this.selectedDirections = []; // Réinitialiser la sélection des directions
-          this.selectedPostes = []; // Réinitialiser la sélection des postes
-        },
-        error: (err) => console.error('Erreur lors de l\'ajout du site:', err)
-      });
-    } else {
-      alert('Le nom du site ne peut pas être vide.');
+addSite(): void {
+  const cleanedName = this.newSite.nom_site.trim();
+  if (cleanedName === '') {
+    this.messageService.add({ severity: 'warn', summary: 'Validation', detail: 'Le nom du site ne peut pas être vide.' });
+    return;
+  }
+
+  if (this.isDuplicateSiteName(cleanedName)) {
+    this.messageService.add({ severity: 'error', summary: 'Duplication', detail: 'Un site avec ce nom existe déjà.' });
+    return;
+  }
+
+  const siteSansId = {
+    nom_site: cleanedName,
+    archive: false,
+    directionIds: this.selectedDirections.map(d => d.id),
+    postesIds: this.selectedPostes.map(p => p.id)
+  };
+
+  this.siteService.ajouterSite(siteSansId).subscribe({
+    next: (siteAjoute) => {
+      this.sites.push(siteAjoute);
+      this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Site ajouté avec succès.' });
+      this.showDialog = false;
+      this.newSite = { id: 0, nom_site: '', archive: false };
+      this.selectedDirections = [];
+      this.selectedPostes = [];
+    },
+    error: (err) => {
+      this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de l\'ajout du site.' });
+      console.error(err);
     }
-  }
+  });
+}
+
+
   
   
   
-  exportSites(): void {
-    if (this.selectedSites.length > 0) {
-      const csvData = this.convertToCSV(this.selectedSites); // Utiliser les éléments sélectionnés
+exportSites(): void {
+  const hasSelected = this.selectedSites.length > 0;
+  const count = this.selectedSites.length;
+
+  this.confirmationService.confirm({
+    header: 'Confirmer l’exportation',
+    message: hasSelected
+      ? `Voulez-vous exporter les ${count} site${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''} ?`
+      : 'Aucun site sélectionné. Voulez-vous exporter tous les sites ?',
+    icon: 'pi pi-exclamation-triangle',
+    acceptButtonProps: {
+      label: 'Oui',
+      icon: 'pi pi-check',
+      severity: 'success'
+    },
+    rejectButtonProps: {
+      label: 'Non',
+      icon: 'pi pi-times',
+      severity: 'secondary'
+    },
+    accept: () => {
+      let csvData;
+      if (hasSelected) {
+        csvData = this.convertToCSV(this.selectedSites);
+      } else {
+        csvData = this.convertToCSV(this.sites);
+      }
       this.downloadCSV(csvData);
-    } else {
-    const csvData = this.convertToCSV(this.sites); // Sites peut être ton tableau de données
-    this.downloadCSV(csvData);}
-  }
+    },
+    reject: () => {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Annulé',
+        detail: 'Exportation annulée',
+      });
+    }
+  });
+}
+
+
   
   convertToCSV(data: any[]): string {
     const headers = Object.keys(data[0]); // Prendre les noms de propriétés des objets

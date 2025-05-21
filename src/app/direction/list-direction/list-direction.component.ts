@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ViewChild } from '@angular/core';
-import { FormGroup, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
@@ -8,7 +8,7 @@ import { SpeedDialModule } from 'primeng/speeddial';
 import { Table, TableModule } from 'primeng/table';
 import { Direction } from '../model/Direction';
 import { DirectionService } from '../service/direction.service';
-import { MenuItem } from 'primeng/api';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 import { NgModule } from '@angular/core';
 import { DirectionDTO } from '../model/DirectionDTO';
 import { Site } from '../../site/model/site';
@@ -16,6 +16,8 @@ import { SiteService } from '../../site/service/site.service';
 import { PickListModule } from 'primeng/picklist';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { forkJoin, of } from 'rxjs';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
 
 
 
@@ -32,9 +34,14 @@ import { forkJoin, of } from 'rxjs';
       SpeedDialModule,
       SpeedDialModule,
           PickListModule,
-          MultiSelectModule
-    
-    ],
+          MultiSelectModule,
+          ConfirmDialogModule,
+           ToastModule,
+  FormsModule,
+    ReactiveFormsModule,
+    ]
+    ,
+       providers: [ConfirmationService,MessageService],
        schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './list-direction.component.html',
   styleUrl: './list-direction.component.css'
@@ -54,19 +61,24 @@ export class ListDirectionComponent implements OnInit {
     nom_direction: '', 
     siteIds: [] 
   };
-  
+  form!: FormGroup;
+
   searchText: string = '';
   sites: any[] = []; 
   selectedSites: Site[] = []; // Pour contenir les sites sélectionnés
 
   @ViewChild('dt') dt!: Table;
 
-  constructor(private directionService: DirectionService, private siteservice : SiteService) {}
+  constructor(private directionService: DirectionService, private siteservice : SiteService,
+    private messageService: MessageService, private confirmationService: ConfirmationService,private fb: FormBuilder) {this.form = this.fb.group({
+    nom_direction: ['', Validators.required]
+  });}
 
 
  ngOnInit(): void {
   this.getDirections();
 this.loadSites();
+
   
  }
  saveDirection() {
@@ -128,21 +140,46 @@ archiveDirection(direction: Direction): void {
     return;
   }
 
-  if (confirm(`Voulez-vous vraiment archiver la direction ${direction.nom_direction} ?`)) {
-    // Appel du service pour archiver la direction
-    this.directionService.archiverDirection(direction.id).subscribe({
-      next: (response) => {
-        direction.archive = true;  // Met à jour l'état de l'archive
-        console.log('Direction archivée avec succès', response);
-        this.getDirections();
-      },
-      error: (err) => {
-        console.error('Erreur lors de l\'archivage de la direction', err);
-      }
-    });
-  }
+  this.directionService.archiverDirection(direction.id).subscribe({
+    next: (response) => {
+      direction.archive = true;
+      console.log('Direction archivée avec succès', response);
+      this.getDirections();
+    },
+    error: (err) => {
+      console.error('Erreur lors de l\'archivage de la direction', err);
+    }
+  });
 }
 
+
+confirmArchive(direction: Direction): void {
+  this.confirmationService.confirm({
+    header: 'Confirmation d\'archivage',
+    message: `Voulez-vous vraiment archiver la direction "${direction.nom_direction}" ? Cette action est réversible.`,
+    icon: 'pi pi-exclamation-triangle',
+    acceptButtonProps: {
+      label: 'Oui, archiver',
+      icon: 'pi pi-check',
+      severity: 'danger',
+    },
+    rejectButtonProps: {
+      label: 'Annuler',
+      icon: 'pi pi-times',
+      severity: 'secondary',
+    },
+    accept: () => {
+      this.archiveDirection(direction);
+    },
+    reject: () => {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Annulé',
+        detail: 'Archivage annulé',
+      });
+    },
+  });
+}
 
 openEditDialog(direction: Direction): void {
   if (direction.id === undefined) {
@@ -163,21 +200,56 @@ showAddDirectionDialog(): void {
 }
 
 addDirection() {
-  // Mettre à jour le modèle avec le nom et les sites sélectionnés
-  this.new.nom_direction = this.newDirection.nom_direction; // Ajoute le nom de la direction
+  // Récupérer la valeur depuis le formulaire
+  if (this.form.invalid) {
+    this.form.markAllAsTouched(); // pour déclencher l'affichage des erreurs
+    return;
+  }
+  this.newDirection.nom_direction = this.form.value.nom_direction;
+
+  const cleanedNewName = this.newDirection.nom_direction.trim().toLowerCase();
+
+  // Vérification de l'existence
+  const exists = this.directions.some(dir =>
+    dir.nom_direction.trim().toLowerCase() === cleanedNewName
+  );
+
+  if (exists) {
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Nom existant',
+      detail: 'Une direction avec ce nom existe déjà.'
+    });
+    return;
+  }
+
+  // Préparer l'objet à envoyer
+  this.new.nom_direction = this.newDirection.nom_direction.trim();
   this.new.siteIds = this.selectedSites
     .map(site => site.id)
-    .filter(id => id !== undefined) as number[]; // On s'assure que les IDs sont valides
+    .filter(id => id !== undefined) as number[];
 
-  // Appel du service pour ajouter la direction
-  this.directionService.addDirection(this.new).subscribe(response => {
-    console.log('Direction ajoutée avec succès:', response);
-    // Réinitialiser après l'ajout
-    this.selectedSites = []; 
-    this.newDirection.nom_direction = ''; // Réinitialiser le nom de la direction
-    this.showDialog = false;
-  }, error => {
-    console.error('Erreur lors de l\'ajout de la direction:', error);
+  // Appel au service
+  this.directionService.addDirection(this.new).subscribe({
+    next: () => {
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Succès',
+        detail: 'Direction ajoutée avec succès.'
+      });
+      this.selectedSites = [];
+      this.newDirection.nom_direction = '';
+      this.showDialog = false;
+      this.getDirections();
+    },
+    error: (error) => {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Erreur',
+        detail: 'Erreur lors de l\'ajout de la direction.'
+      });
+      console.error('Erreur lors de l\'ajout de la direction:', error);
+    }
   });
 }
 
@@ -185,31 +257,55 @@ addDirection() {
 
   
 updateDirection(): void {
+  
   if (this.selectedDirection.id) {
+    const cleanedUpdatedName = this.selectedDirection.nom_direction.trim().toLowerCase();
+
+    const exists = this.directions.some(dir =>
+      dir.nom_direction.trim().toLowerCase() === cleanedUpdatedName &&
+      dir.id !== this.selectedDirection.id // Exclure la direction elle-même
+    );
+
+    if (exists) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Nom existant',
+        detail: 'Une autre direction avec ce nom existe déjà.'
+      });
+      return;
+    }
+
     const updatedDirectionDTO: DirectionDTO = new DirectionDTO(
       this.selectedDirection.id,
-      this.selectedDirection.nom_direction,
+      this.selectedDirection.nom_direction.trim(),
       this.selectedSites.map(site => site.id).filter(id => id !== undefined) as number[]
     );
 
     this.directionService.updateDirection(updatedDirectionDTO).subscribe({
       next: (response) => {
-        console.log('Direction mise à jour:', response);
-        
-        // Mettre à jour la direction dans la liste locale
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Succès',
+          detail: 'Direction mise à jour avec succès.'
+        });
+
         const index = this.directions.findIndex(dir => dir.id === this.selectedDirection.id);
         if (index !== -1) {
-          // Conserver les sites mis à jour
           this.directions[index] = {
             ...response,
-            sites: this.selectedSites // Garder les sites sélectionnés
+            sites: this.selectedSites
           };
         }
-        
+
         this.visible = false;
-        this.getDirections(); // Recharger les données si nécessaire
+        this.getDirections();
       },
       error: (error) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Erreur',
+          detail: 'Erreur lors de la mise à jour de la direction.'
+        });
         console.error('Erreur lors de la mise à jour de la direction', error);
       }
     });
@@ -219,13 +315,42 @@ updateDirection(): void {
 
 
 exportDirections(): void {
-  if (this.selectedDirections.length > 0) {
-    const csvData = this.convertToCSV(this.selectedDirections); // Utiliser le bon tableau
-    this.downloadCSV(csvData);
-  } else {
-    const csvData = this.convertToCSV(this.directions); // Utiliser le tableau complet si aucun élément n'est sélectionné
-    this.downloadCSV(csvData);
-  }
+  const hasSelected = this.selectedDirections.length > 0;
+  const count = this.selectedDirections.length;
+
+  this.confirmationService.confirm({
+    header: 'Confirmer l’exportation',
+    message: hasSelected
+      ? `Voulez-vous exporter les ${count} direction${count > 1 ? 's' : ''} sélectionnée${count > 1 ? 's' : ''} ?`
+      : 'Aucune direction sélectionnée. Voulez-vous exporter toutes les directions ?',
+    icon: 'pi pi-exclamation-triangle',
+    acceptButtonProps: {
+      label: 'Oui',
+      icon: 'pi pi-check',
+      severity: 'danger'
+    },
+    rejectButtonProps: {
+      label: 'Non',
+      icon: 'pi pi-times',
+      severity: 'secondary'
+    },
+    accept: () => {
+      let csvData;
+      if (hasSelected) {
+        csvData = this.convertToCSV(this.selectedDirections);
+      } else {
+        csvData = this.convertToCSV(this.directions);
+      }
+      this.downloadCSV(csvData);
+    },
+    reject: () => {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Annulé',
+        detail: 'Exportation annulée',
+      });
+    }
+  });
 }
 
 

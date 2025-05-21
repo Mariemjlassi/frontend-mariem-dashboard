@@ -45,13 +45,13 @@ import { ReportingComponent } from './reporting/reporting/reporting.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { HabiliteComponent } from './habilite/habilite/habilite.component';
 import { superadminGuard } from './auth/guard/superadmin.guard';
+import { adminOrSuperadminGuard } from './auth/guard/admin-or-superadmin.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
-  { path: 'signup', component: SignupComponent },
+  { path: 'signup', component: SignupComponent, canActivate: [adminOrSuperadminGuard] },
   { path: 'sidebar', component: SidebarComponent, canActivate: [authGuard] },
-  { path: 'navbar', component: NavbarComponent },
   { path: 'add-employe', component: AddEmployeComponent },
   { path: 'list-employe-existants', component: EmployeListComponent },
   {
@@ -67,10 +67,11 @@ export const routes: Routes = [
   {
     path: 'list-directions-archives',
     component: ArchiveListDirectionComponent,
+    canActivate: [guardGuard],
   },
-  { path: 'archive', component: ListeArchiveComponent },
-  { path: 'liste-sites-archives', component: ArchiveListSiteComponent },
-  { path: 'navbarexp', component: NavbarexmplComponent },
+  { path: 'archive', component: ListeArchiveComponent,canActivate: [guardGuard], },
+  { path: 'liste-sites-archives', component: ArchiveListSiteComponent,canActivate: [guardGuard], },
+  { path: 'navbarexp', component: NavbarexmplComponent ,canActivate: [guardGuard],},
   {
     path: 'experience',
     component: ExperienceComponent,
@@ -97,43 +98,39 @@ export const routes: Routes = [
     component: ArchiveListeTypediplomeComponent,
     canActivate: [guardGuard],
   },
-  { path: 'list-Poste', component: ListPosteComponent },
+  { path: 'list-Poste', component: ListPosteComponent,canActivate: [authGuard] },
   {
     path: 'archive-liste-Poste',
     component: ArchiveListPosteComponent,
     canActivate: [guardGuard],
   },
-  { path: 'ListeEmploye', component: ListeEmployeComponent },
+  { path: 'ListeEmploye', component: ListeEmployeComponent ,canActivate: [authGuard]},
   { path: 'profile', component: ProfileComponent },
-  { path: 'poste', component: PosteComponent, canActivate: [guardGuard] },
-  { path: 'list-utilisateurs', component: UtilisateurComponent },
+  { path: 'poste', component: PosteComponent, canActivate: [authGuard] },
+  { path: 'list-utilisateurs', component: UtilisateurComponent, canActivate: [authGuard] },
+  
   {
     path: 'register/:role',
     component: SignupComponent,
-    canActivate: [adminGuard],
+    canActivate: [adminOrSuperadminGuard],
   },
-  {
-    path: 'compatibilite/:posteId',
-    component: RecrutementComponent,
-    canActivate: [guardGuard],
-  },
-  { path: 'chart', component: RecrutementComponent, canActivate: [guardGuard] },
-  { path: 'notifications', component: ListNotificationsComponent },
-  { path: 'formations', component: FormationComponent },
+ 
+  { path: 'notifications', component: ListNotificationsComponent, canActivate: [authGuard] },
+  { path: 'formations', component: FormationComponent , canActivate:[authGuard]},
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },
-  { path: 'gestion-permissions', component: PermissionsComponent },
-  { path: 'messages', component: MessagesComponent },
-  { path: 'formation_responsable', component: FormationResponsableComponent },
-  { path: 'formations-employees', component: FormationEmployeComponent },
-  { path: 'messages/thread/:messageId', component: MessageDetailComponent },
-  { path: 'messages/nouveau', component: MessageComposeComponent },
-  { path: 'home', component: HomeComponent },
-  { path: 'formations-responsable', component: FormationResponsableComponent },
-  { path: 'competences', component: CompetencesComponent },
-  { path: 'employe-competences', component: EmployeCompetenceComponent },
-  {path:'pdf/:dataq', component:PdfComponent},
-  { path: 'reporting', component: ReportingComponent },
-  { path: 'dashboard', component: DashboardComponent },
-   { path: 'habilite', component: HabiliteComponent }
+  { path: 'gestion-permissions', component: PermissionsComponent , canActivate:[adminOrSuperadminGuard]},
+  { path: 'messages', component: MessagesComponent, canActivate:[authGuard] },
+  { path: 'formation_responsable', component: FormationResponsableComponent ,canActivate:[authGuard]},
+  { path: 'formations-employees', component: FormationEmployeComponent ,canActivate:[authGuard]},
+  { path: 'messages/thread/:messageId', component: MessageDetailComponent,canActivate:[authGuard] },
+  { path: 'messages/nouveau', component: MessageComposeComponent,canActivate:[authGuard] },
+  { path: 'home', component: HomeComponent,canActivate:[authGuard] },
+  { path: 'formations-responsable', component: FormationResponsableComponent , canActivate:[authGuard]},
+  { path: 'competences', component: CompetencesComponent,canActivate:[authGuard] },
+  { path: 'employe-competences', component: EmployeCompetenceComponent ,canActivate:[authGuard]},
+  {path:'pdf/:dataq', component:PdfComponent, canActivate : [authGuard]},
+  { path: 'reporting', component: ReportingComponent,canActivate:[authGuard] },
+  { path: 'dashboard', component: DashboardComponent,canActivate:[adminOrSuperadminGuard] },
+   { path: 'habilite', component: HabiliteComponent, canActivate: [authGuard] }
 ];

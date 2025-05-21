@@ -41,12 +41,12 @@ export class UtilisateurService {
     return this.http.put<any>(`${this.apiUrl}/${userId}/reset-password`, {}, {headers : this.headers});
   }
   getResponsables(): Observable<Utilisateur[]> {
-    return this.http.get<Utilisateur[]>(`${this.apiUrl}/responsables`);
-  }
+  return this.http.get<Utilisateur[]>(`${this.apiUrl}/responsables`, {headers: this.headers});
+}
 
-  getAllUsers(): Observable<Utilisateur[]> {
-    return this.http.get<Utilisateur[]>(`${this.apiUrl}/all`);
-  }
+getAllUsers(): Observable<Utilisateur[]> {
+  return this.http.get<Utilisateur[]>(`${this.apiUrl}/all`, {headers: this.headers});
+}
 
   lockAccount(id: number): Observable<{message: string}> {
   return this.http.post<{message: string}>(

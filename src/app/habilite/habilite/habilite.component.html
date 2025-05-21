@@ -1,21 +1,52 @@
-<div class="dashboard-container">
-  <!-- Header avec recherche et filtres -->
-  <div class="dashboard-header">
-    <div class="header-content">
-      <h1>Tableau de bord des habilitations</h1>
-      <p class="subtitle">Gestion des compétences et accès aux postes</p>
-    </div>
-    
-    <div class="header-actions">
-      <div class="search-filter">
-        <span class="p-input-icon-left">
-          <i class="pi pi-search"></i>
-          <input type="text" pInputText [(ngModel)]="searchText" 
-                (input)="filterEmployes()" placeholder="Rechercher un employé..." />
-        </span>
+<div class="dashboard-header">
+  <div class="header-background"></div>
+  
+  <div class="header-content">
+    <div class="title-container">
+      <div class="icon-badge animated">
+        <i class="pi pi-shield"></i>
+        <div class="particles"></div>
       </div>
-    </div>
-  </div>
+      <br>
+      <div class="title-wrapper">
+        <h1 class="gradient-text">
+          
+          <span class="highlight">Tableau de bord des habilitations</span>
+        </h1>
+        
+        <div class="animated-underline"></div>
+        
+        <p class="subtitle">
+          <i class="pi pi-sitemap pulse"></i>
+          Gestion des compétences et accès aux postes
+          <i class="pi pi-key pulse"></i>
+        </p>
+        <br>
+        <br>
+        <br>
+        
+      </div>
+   
+    
+ <div class="header-actions">
+   <div class="header-actions">
+  <form class="form">
+    <button type="button">
+      <svg width="17" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="search">
+        <path d="M7.667 12.667A5.333 5.333 0 107.667 2a5.333 5.333 0 000 10.667zM14.334 14l-2.9-2.9" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </button>
+    <input class="input"
+           type="text"
+           placeholder="Rechercher un employé ou un poste..."
+           required
+           [(ngModel)]="searchText"
+           (input)="filterEmployes()"
+           name="search">
+  </form>
+</div>
+</div>
+ </div>
 
   <!-- Section principale avec onglets -->
   <p-tabView class="main-tabview">
@@ -54,7 +85,7 @@
             </div>
           </div>
         </div>
-
+<br><br>
    <!-- Sélecteur de vue -->
         <div class="view-selector">
           <p-buttonGroup>
@@ -70,10 +101,11 @@
         </div>
       </div>
 
+      
       <!-- Contenu dynamique selon la vue -->
       <div [ngSwitch]="currentDisplayMode">
         <!-- Vue Matrice -->
-        <div *ngSwitchCase="'matrix'" class="matrix-view">
+   <div *ngSwitchCase="'matrix'" class="matrix-view">
           <div class="matrix-container">
             <div class="matrix-scroll-wrapper">
               <table class="habilitation-matrix">
@@ -186,10 +218,21 @@
             </div>
           </div>
           
-          <div class="competence-radar">
-            <h4>Radar des compétences requises</h4>
-            <p-chart type="radar" [data]="radarChartData" [options]="radarChartOptions"></p-chart>
-          </div>
+         <div class="competence-analysis">
+
+  
+  <div class="competence-stats">
+    <div class="top-competences">
+      <h4>Top 5 compétences maîtrisées</h4>
+      <p-chart type="bar" [data]="topCompetencesData" [options]="barChartOptions"></p-chart>
+    </div>
+    
+    <div class="weak-competences">
+      <h4>Top 5 compétences à améliorer</h4>
+      <p-chart type="bar" [data]="weakCompetencesData" [options]="barChartOptions"></p-chart>
+    </div>
+  </div>
+</div>
         </div>
       </div>
     </p-tabPanel>

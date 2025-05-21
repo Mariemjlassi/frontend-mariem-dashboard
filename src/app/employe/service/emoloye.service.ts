@@ -10,6 +10,7 @@ import { ExperienceAnterieure } from '../model/ExperienceAnterieure';
 import { Poste } from '../model/Poste';
 import { EmployePoste } from '../model/EmployePoste';
 import { PosteAvecDatesDTO } from '../model/PosteAvecDatesDTO';
+import { AuthService } from '../../auth/service/auth.service';
 
 @Injectable({
   providedIn: 'root',
@@ -18,21 +19,26 @@ export class EmoloyeService {
   private apiUrl = 'http://localhost:9090/api/employes';
 
   private apiUrl2 = 'http://localhost:9090/api/sites';
-  constructor(private http: HttpClient) {}
+  headers: any;
+  
+  constructor(private http: HttpClient, private authservice: AuthService) {
+    this.headers = this.authservice.createAuthorizationHeader();
+  }
 
   addEmploye(employe: Employe): Observable<Employe> {
-    return this.http.post<Employe>(this.apiUrl, employe);
+    return this.http.post<Employe>(this.apiUrl, employe, { headers: this.headers });
   }
  getNomDirectionPosteActuel(employeId: number): Observable<string> {
-    return this.http.get(`${this.apiUrl}/${employeId}/poste-actuel/direction`, { responseType: 'text' });
+    return this.http.get(`${this.apiUrl}/${employeId}/poste-actuel/direction`, { responseType: 'text',
+      headers: this.headers  });
   }
   getAllEmployes(): Observable<EmployeExistant[]> {
     return this.http.get<EmployeExistant[]>(
-      `${this.apiUrl}/employes-without-poste`
+      `${this.apiUrl}/employes-without-poste`,{ headers: this.headers }
     );
   }
   getAllSites(): Observable<Site[]> {
-    return this.http.get<Site[]>(this.apiUrl2);
+    return this.http.get<Site[]>(this.apiUrl2,{ headers: this.headers });
   }
 
   ajouterEmploye(
@@ -43,22 +49,23 @@ export class EmoloyeService {
   ): Observable<Employe> {
     return this.http.post<Employe>(
       `${this.apiUrl}/ajouterAvecPoste?posteId=${posteId}&dateDebut=${dateDebut}&dateFin=${dateFin}`,
-      employe
+      employe,
+      { headers: this.headers }
     );
   }
 
   getEmployesWithDirectionAndSite(): Observable<any> {
-    return this.http.get<any>(this.apiUrl);
+    return this.http.get<any>(this.apiUrl,{ headers: this.headers });
   }
   getDisciplines(employeId: number): Observable<Discipline[]> {
     return this.http.get<Discipline[]>(
-      `${this.apiUrl}/${employeId}/disciplines`
+      `${this.apiUrl}/${employeId}/disciplines`,{ headers: this.headers }
     );
   }
 
   getExperiencesAssad(employeId: number): Observable<ExperienceAssad[]> {
     return this.http.get<ExperienceAssad[]>(
-      `${this.apiUrl}/employes/${employeId}/experiences/assad`
+      `${this.apiUrl}/employes/${employeId}/experiences/assad`,{ headers: this.headers }
     );
   }
 
@@ -67,12 +74,12 @@ export class EmoloyeService {
     employeId: number
   ): Observable<ExperienceAnterieure[]> {
     return this.http.get<ExperienceAnterieure[]>(
-      `${this.apiUrl}/employes/${employeId}/experiences/anterieures`
+      `${this.apiUrl}/employes/${employeId}/experiences/anterieures`,{ headers: this.headers }
     );
   }
   getPostesByEmploye(employeId: number): Observable<PosteAvecDatesDTO[]> {
     return this.http.get<PosteAvecDatesDTO[]>(
-      `${this.apiUrl}/postes/${employeId}`
+      `${this.apiUrl}/postes/${employeId}`,{ headers: this.headers }
     );
   }
   ajouterPosteAEmploye(
@@ -99,7 +106,7 @@ export class EmoloyeService {
       .set('dateDebut', dateDebut)
       .set('dateFin', dateFin);
 
-    return this.http.post<PosteAvecDatesDTO>(url, null, { params });
+    return this.http.post<PosteAvecDatesDTO>(url, null, { params, headers : this.headers });
   }
 
   getPosteDetails(
@@ -110,12 +117,18 @@ export class EmoloyeService {
       .set('employeId', employeId.toString())
       .set('posteId', posteId.toString());
 
-    return this.http.get<EmployePoste>(`${this.apiUrl}/details`, { params });
+    return this.http.get<EmployePoste>(`${this.apiUrl}/details`, { 
+      params: params,
+      headers: this.headers 
+    });
   }
 
   getPosteDetailsById(employePosteId: number): Observable<EmployePoste> {
-    return this.http.get<EmployePoste>(`${this.apiUrl}/details/${employePosteId}`);
-}
+    return this.http.get<EmployePoste>(
+      `${this.apiUrl}/details/${employePosteId}`,
+      { headers: this.headers }
+    );
+  }
 
   supprimerPostePourEmploye(
     employeId: number,
@@ -125,9 +138,11 @@ export class EmoloyeService {
       .set('employeId', employeId.toString())
       .set('posteId', posteId.toString());
 
-    return this.http.delete(`${this.apiUrl}/delete`, { params });
+    return this.http.delete(`${this.apiUrl}/delete`, { 
+      params, 
+      headers: this.headers 
+    });
   }
-
   ajouterEmployeAvecPoste(
     posteId: number,
     directionId: number,
@@ -136,7 +151,6 @@ export class EmoloyeService {
     dateDebut: string,
     dateFin: string
   ): Observable<any> {
-    // Préparation des paramètres pour l'URL
     const params = new HttpParams()
       .set('posteId', posteId.toString())
       .set('directionId', directionId.toString())
@@ -144,11 +158,12 @@ export class EmoloyeService {
       .set('dateDebut', dateDebut)
       .set('dateFin', dateFin);
 
-    // Appel HTTP POST
     return this.http.post<any>(`${this.apiUrl}/ajouter`, employe, {
       params: params,
+      headers: this.headers
     });
   }
+
   modifierEmploye(
     id: number,
     posteId: number | null,
@@ -158,10 +173,7 @@ export class EmoloyeService {
     dateDebut: string | null,
     dateFin: string | null
   ): Observable<Employe> {
-    // Créer un objet HttpParams pour les paramètres de requête
     let params = new HttpParams();
-
-    // Ajouter les paramètres uniquement s'ils ne sont pas null ou undefined
     if (posteId !== null && posteId !== undefined) {
       params = params.set('posteId', posteId.toString());
     }
@@ -178,8 +190,10 @@ export class EmoloyeService {
       params = params.set('dateFin', dateFin);
     }
 
-    // Appel HTTP PUT avec les paramètres
-    return this.http.put<Employe>(`${this.apiUrl}/${id}`, employe, { params });
+    return this.http.put<Employe>(`${this.apiUrl}/${id}`, employe, { 
+      params, 
+      headers: this.headers 
+    });
   }
 
   modifierPosteAEmployeParId(
@@ -190,35 +204,26 @@ export class EmoloyeService {
     dateDebut: string,
     dateFin: string | null
   ): Observable<PosteAvecDatesDTO> {
-      const url = `${this.apiUrl}/poste/${employePosteId}`;
-      
-      let params = new HttpParams()
-          .set('directionId', directionId.toString())
-          .set('siteId', siteId.toString())
-          .set('dateDebut', dateDebut);
-          if (posteId) {
-            params = params.set('posteId', posteId.toString());
-        }
-  
-      if (dateFin) {
-          params = params.set('dateFin', dateFin);
-      }
-      
-      return this.http.put<PosteAvecDatesDTO>(url, null, { 
-          params,
-          headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-          }
-      }).pipe(
-          catchError(error => {
-              console.error('Erreur détaillée:', error);
-              return throwError(error);
-          })
-      );
+    const url = `${this.apiUrl}/poste/${employePosteId}`;
+    let params = new HttpParams()
+      .set('directionId', directionId.toString())
+      .set('siteId', siteId.toString())
+      .set('dateDebut', dateDebut);
+
+    if (posteId) {
+      params = params.set('posteId', posteId.toString());
+    }
+    if (dateFin) {
+      params = params.set('dateFin', dateFin);
+    }
+
+    return this.http.put<PosteAvecDatesDTO>(url, null, { 
+      params,
+      headers: this.headers
+    });
   }
 
-  modifierPosteComplet(
+   modifierPosteComplet(
     employePosteId: number,
     posteId: number | undefined,
     directionId: number,
@@ -226,27 +231,23 @@ export class EmoloyeService {
     dateDebut: string,
     dateFin: string | null
   ): Observable<PosteAvecDatesDTO> {
-      const url = `${this.apiUrl}/poste/${employePosteId}`;
-      
-      let params = new HttpParams()
-          .set('directionId', directionId.toString())
-          .set('siteId', siteId.toString())
-          .set('dateDebut', dateDebut);
-  
-      if (posteId) {
-          params = params.set('posteId', posteId.toString());
-      }
-      if (dateFin) {
-          params = params.set('dateFin', dateFin);
-      }
-      
-      return this.http.put<PosteAvecDatesDTO>(url, null, { 
-          params,
-          headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-          }
-      });
+    const url = `${this.apiUrl}/poste/${employePosteId}`;
+    let params = new HttpParams()
+      .set('directionId', directionId.toString())
+      .set('siteId', siteId.toString())
+      .set('dateDebut', dateDebut);
+
+    if (posteId) {
+      params = params.set('posteId', posteId.toString());
+    }
+    if (dateFin) {
+      params = params.set('dateFin', dateFin);
+    }
+
+    return this.http.put<PosteAvecDatesDTO>(url, null, { 
+      params,
+      headers: this.headers
+    });
   }
   private formatDateToISO(date: Date): string {
       if (!date) return '';
@@ -262,15 +263,13 @@ export class EmoloyeService {
     formationId: number
   ): Observable<Blob> {
     const url = `${this.apiUrl}/document?employeId=${employeId}&formationId=${formationId}`;
-    return this.http.get(url, { responseType: 'blob' }).pipe(
-      catchError((error) => {
-        console.error('Erreur lors de la récupération du document', error);
-        return throwError(error); // Re-throw the error for further handling
-      })
-    );
+    return this.http.get(url, { 
+      responseType: 'blob',
+      headers: this.headers 
+    });
   }
   supprimerPosteParId(employePosteId: number): Observable<any> {
     const url = `${this.apiUrl}/poste/${employePosteId}`;
-    return this.http.delete(url);
+    return this.http.delete(url, { headers: this.headers });
   }
 }

@@ -29,7 +29,10 @@
                             (click)="showAddSiteDialog()"></button>
                     <button pButton icon="pi pi-file-excel" label="Exporter" 
                             class=" p-button-contrast export-button" 
-                            (click)="exportSites()"></button>
+                            (click)="exportSites()"><span *ngIf="selectedSites.length > 0" class="selection-count">
+                            ({{selectedSites.length}})
+                        </span></button>
+
                 </div>
             </div>
 
@@ -62,10 +65,11 @@
                                             class="p-button-rounded p-button-text p-button-primary" 
                                             (click)="editSite(site)" pTooltip="Modifier">
                                     </button>
-                                    <button pButton icon="pi pi-trash" 
-                                            class="p-button-rounded p-button-text p-button-danger" 
-                                            (click)="archiveSite(site)" pTooltip="Archiver">
-                                    </button>
+                              <button pButton icon="pi pi-trash" 
+        class="p-button-rounded p-button-text p-button-danger" 
+        (click)="confirmArchive(site)" pTooltip="Archiver">
+</button>
+
                                 </div>
                             </td>
                         </tr>
@@ -85,7 +89,7 @@
             </div>
         </div>
     </div>
-
+    <p-confirmDialog></p-confirmDialog>
 
 <!-- Dialog for Add Site -->
 <p-dialog header="Ajouter un nouveau site" [(visible)]="showDialog" [modal]="true" [closable]="false"
@@ -121,3 +125,4 @@
     </div>
 
 </p-dialog>
+<p-toast></p-toast>
