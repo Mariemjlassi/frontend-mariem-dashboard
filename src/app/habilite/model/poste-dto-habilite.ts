@@ -1,5 +1,5 @@
 export interface PosteDtoHabilite {
-     id: number;
+  id: number;
   niveauExperience: string;
   diplomeRequis: string;
   titre: string;

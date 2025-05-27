@@ -182,7 +182,7 @@ constructor(private fb: FormBuilder,
   private router: Router,
   private confirmationService: ConfirmationService,
   private ngZone: NgZone,
-  
+   private cdRef: ChangeDetectorRef,
   private enteteService: EnteteService,
   private messageService: MessageService,
   private employeService: EmoloyeService,
@@ -844,14 +844,6 @@ editComment(formation: FormationDto) {
             next: (response: Blob) => {
               const fileURL = URL.createObjectURL(new Blob([response], { type: 'application/pdf' }));
               this.pdfUrls[employe.id] = this.sanitizer.bypassSecurityTrustResourceUrl(fileURL);
-            },
-            error: (err) => {
-              console.error(`Erreur lors de la récupération du document pour employé ${employe.id} et formation ${formation.id}:`, err);
-              this.messageService.add({
-                severity: 'error',
-                summary: 'Erreur',
-                detail: `Document introuvable pour employé ${employe.id}`
-              });
             }
           });
   
@@ -917,6 +909,38 @@ openModificationDialog(formation: any) {
   } else {
     this.modificationForm.get('sousTypeFormation')?.enable();
   }
+ // Récupérer les IDs des employés de la formation (pour TOUS les types de formation)
+    const employeIds = formation.employes.map((emp: any) => emp.id);
+   
+    // Pré-sélectionner les employés dans le formControl (pour TOUS les types de formation)
+    this.modificationForm.patchValue({
+        selectedCitiesModif: employeIds
+    });
+ // Initialiser la liste des employés sélectionnés (pour TOUS les types de formation)
+    this.selectedEmployeesModif = this.cities
+        .filter(city => employeIds.includes(city.code))
+        .map(city => ({
+            ...city,
+            name: city.name || `${city.nom} ${city.prenom}`
+        }));
+    // Traitement spécifique à POLYCOMPETENCE
+    if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
+        this.selectedRadioModif = {};
+        
+        // Charger les résultats existants
+        formation.employes.forEach((emp: any) => {
+            this.formationservice.getResultatFormation(formation.id, emp.id).subscribe({
+                next: (result) => {
+                    this.selectedRadioModif[emp.id] = result.resultat;
+                    this.changeDetectorRef.detectChanges();
+                },
+                error: (err) => {
+                    console.error('Erreur récupération résultat', err);
+                    this.selectedRadioModif[emp.id] = '';
+                }
+            });
+        });
+    }
 
   // --- Construction selectedEmployees sans utiliser cities ---
   console.log('Formation.employes:', formation.employes);
@@ -933,8 +957,7 @@ openModificationDialog(formation: any) {
   }) || [];
   console.log('SelectedEmployees construits:', this.selectedEmployees);
 
-  const employeIds = this.selectedEmployees.map(e => e.id);
-  console.log('IDs employés extraits pour patch:', employeIds);
+
 
   // Patch du formulaire AVANT d'ouvrir le dialogue (important)
   this.modificationForm.patchValue({
@@ -950,7 +973,7 @@ openModificationDialog(formation: any) {
 if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
   this.selectedRadioModif = {};
   this.editingEmployeeModif = {};
-  
+
   formation.employes?.forEach((emp: any) => {
     console.log(`Récupération résultat formation pour employé id=${emp.id}`);
     this.formationservice.getResultatFormation(formation.id, emp.id).subscribe({
@@ -967,7 +990,9 @@ if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
       }
     });
   });
-}else {
+}
+
+else {
     this.formationPosteService.getPosteByFormationId(formation.id).subscribe({
       next: (poste) => {
         console.log('Poste récupéré:', poste);
@@ -1022,6 +1047,7 @@ if (formation.sousTypeFormation === 'POLYCOMPETENCE') {
 
   console.log('Modification dialog prêt avec formulaire patché');
 }
+
 
 
 shouldShowEnteteSectionModif(): boolean {
@@ -1182,6 +1208,7 @@ isIntegrationOuPolyvalence(): boolean {
   return value === 'INTEGRATION' || value === 'POLYVALENCE';
 }
 
+
 submitFormation() {
   if (this.formationForm.invalid) {
     this.messageService.add({
@@ -1288,9 +1315,22 @@ submitFormation() {
       console.log('Données envoyées:', formationDto);
       
       // Appel du service
-      this.formationservice.creerFormationAvecResultat(formationDto, rhId).subscribe({
-     
-      });
+     this.formationservice.creerFormationAvecResultat(formationDto, rhId).subscribe({
+  next: (res) => {
+    console.log('Formation avec résultat ajoutée avec succès', res);
+    this.closeDialog();
+    this.loadFormations(); // Le refresh est ici maintenant
+  },
+  error: (error) => {
+    console.error('Erreur lors de l\'ajout de la formation avec résultat', error);
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Erreur',
+      detail: 'Une erreur est survenue lors de l\'ajout de la formation.',
+    });
+  }
+});
+
       this.closeDialog();
       this.loadFormations();
     } else {
@@ -2180,6 +2220,8 @@ showDocumentColumn(): boolean {
           this.selectedFormation?.sousTypeFormation === 'INTEGRATION');
 }
 isConfirming : boolean = false;
+isConfirmationOpen: boolean = false;
+
 updateResultat(formationId: number, employeId: number, resultat: string, employe: any) {
   // Vérifier si c'est une formation POLYCOMPETENCE
   if (this.selectedFormation?.sousTypeFormation === 'POLYCOMPETENCE') {
@@ -2212,50 +2254,64 @@ else if (resultat === 'REUSSI') {
         message: `Êtes-vous sûr que l'employé ${employe.nom} ${employe.prenom} a réussi cette formation ?`,
         header: 'Confirmation de réussite',
         icon: 'pi pi-exclamation-triangle',
-        accept: () => {
-            employe.tempResultat = 'REUSSI';            // :danger: Utilisez setTimeout pour éviter le conflit
+accept: () => {
+  employe.tempResultat = 'REUSSI';
+
+  setTimeout(() => {
+    if (this.isConfirmationOpen) return; // Empêche une double ouverture
+    this.isConfirmationOpen = true;
+
+    this.confirmationService.confirm({
+      message: `Voulez-vous passer cet employé à un autre poste comme poste actuel ?`,
+      header: 'Changement de poste',
+      icon: 'pi pi-info-circle',
+      accept: () => {
+        this.isConfirmationOpen = false;
+        this.showDirectionSiteDialog(formationId, employe);
+      },
+      reject: () => {
+        this.isConfirmationOpen = false;
+
+        this.formationservice.ajouterResultatFormation(formationId, employe.id, 'REUSSI').subscribe({
+          next: (response) => {
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Succès',
+              detail: 'Résultat mis à jour avec succès !',
+            });
+
             setTimeout(() => {
-                this.confirmationService.confirm({
-                    message: `Voulez-vous passer cet employé à un autre poste comme poste actuel ?`,
-                    header: 'Changement de poste',
-                    icon: 'pi pi-info-circle',
-                    accept: () => {
-                        this.showDirectionSiteDialog(formationId, employe);
-                    },
-                    reject: () => {
-                        this.formationservice.ajouterResultatFormation(formationId, employe.id, 'REUSSI').subscribe({
-                            next: (response) => {
-                                this.messageService.add({
-                                    severity: 'success',
-                                    summary: 'Succès',
-                                    detail: 'Résultat mis à jour avec succès !'
-                                });                                // :danger: Encore un setTimeout pour la 3ème boîte
-                                setTimeout(() => {
-                                    this.confirmationService.confirm({
-                                        message: `L'employé ${employe.nom} ${employe.prenom} reste à son poste actuel mais a bien réussi cette formation et peut l'exercer.`,
-                                        header: 'Information',
-                                        icon: 'pi pi-check-circle',
-                                        acceptLabel: 'OK',
-                                        rejectVisible: false,
-                                        accept: () => {
-                                            employe.resultat = 'REUSSI';
-                                            employe.tempResultat = null;
-                                        }
-                                    });
-                                }, 300); // Délai de 300ms
-                            },
-                            error: (err) => {
-                                this.messageService.add({
-                                    severity: 'error',
-                                    summary: 'Erreur',
-                                    detail: 'Une erreur est survenue lors de la mise à jour du résultat.'
-                                });
-                            }
-                        });
-                    }
-                });
-            }, 300); // :danger: Délai de 300ms pour éviter le conflit
-        },
+              if (this.isConfirmationOpen) return;
+              this.isConfirmationOpen = true;
+
+              this.confirmationService.confirm({
+                message: `L'employé ${employe.nom} ${employe.prenom} reste à son poste actuel mais a bien réussi cette formation et peut l'exercer.`,
+                header: 'Information',
+                icon: 'pi pi-check-circle',
+                acceptLabel: 'OK',
+                rejectVisible: false,
+                accept: () => {
+                  this.isConfirmationOpen = false;
+                  employe.resultat = 'REUSSI';
+                  employe.tempResultat = null;
+                }
+              });
+            }, 300);
+          },
+          error: (err) => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Erreur',
+              detail: 'Une erreur est survenue lors de la mise à jour du résultat.'
+            });
+          }
+        });
+      }
+    });
+  }, 300);
+}
+,
+
         reject: () => {
             employe.resultat = null;
             employe.tempResultat = null;
@@ -2400,8 +2456,8 @@ submitComplementaryProgram() {
       // 1. Enregistrer le résultat pour l'employé
       this.formationservice.ajouterResultatFormation(
         this.selectedFormation.id, 
-        this.selectedEmployeeForComplementary.id, 
-        'PROGRAMME_COMPLEMENTAIRE'
+       this.selectedEmployeeForComplementary.id, // ← 👈 pas selectedEmploye ici !
+  'PROGRAMME_COMPLEMENTAIRE'
       ).subscribe({
         next: () => {
           // 2. Utilisez this.posteSelectionne
@@ -2413,14 +2469,17 @@ submitComplementaryProgram() {
             
             this.formationPosteService.addPair(formationId, this.posteSelectionne.id).subscribe({
               next: () => {
+                  this.selectedEmploye.resultat = 'PROGRAMME_COMPLEMENTAIRE';
+          this.selectedEmploye.tempResultat = null;
                 console.log('Paire formation-poste ajoutée avec succès');
               
                 this.displayFormationPosteList();
                 this.showSuccessMessage();
+
                 this.closeComplementaryDialog();
                 this.confirmationService.close();
-
-
+   
+this.cdRef.detectChanges();
                
               },
               error: (posteError) => {
@@ -2432,6 +2491,7 @@ submitComplementaryProgram() {
             console.warn('Aucun poste sélectionné');
             this.showSuccessMessage();
             this.closeComplementaryDialog();
+          
             this.loadFormations();
           }
         },
@@ -2459,6 +2519,7 @@ private showSuccessMessage() {
     summary: 'Succès',
     detail: 'Programme complémentaire créé avec succès'
   });
+  
 }
 
 private showPartialSuccessMessage() {
@@ -2476,6 +2537,7 @@ private handleSuccess() {
     detail: 'Programme complémentaire créé avec succès'
   });
   this.displayComplementaryProgramDialog = false;
+
   this.loadFormations();
 }
 
@@ -2740,21 +2802,33 @@ onEmployeSelectionChangeModif(selectedCodes: number[]) {
     })
     .filter(Boolean);
 
-  // Gérer les résultats
+  // Gérer les résultats et l'état d'édition
   selectedCodes.forEach(code => {
     if (!this.selectedRadioModif[code]) {
-      this.selectedRadioModif[code] = '';
+      this.selectedRadioModif[code] = ''; // ou une valeur par défaut
+    }
+
+    if (this.editingEmployeeModif[code] === undefined) {
+      this.editingEmployeeModif[code] = true; // Montre les radios pour les nouveaux
     }
   });
 
-  // Nettoyer les résultats des employés désélectionnés
+  // Nettoyer les données des employés désélectionnés
   Object.keys(this.selectedRadioModif).forEach(codeStr => {
     const code = Number(codeStr);
     if (!selectedCodes.includes(code)) {
       delete this.selectedRadioModif[code];
     }
   });
+
+  Object.keys(this.editingEmployeeModif).forEach(codeStr => {
+    const code = Number(codeStr);
+    if (!selectedCodes.includes(code)) {
+      delete this.editingEmployeeModif[code];
+    }
+  });
 }
+
 displayCommentDialog: boolean = false;
 currentFormation: any;
 newComment: string = '';

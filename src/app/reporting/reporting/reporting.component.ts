@@ -208,9 +208,9 @@ heatmapOptions: any;
   const data = this.getTopFormationsData(filtered);
   const backgroundColors = [
     'rgba(137, 16, 185, 0.1)', 
-    '#c2318551', 
-    '#E9E2D033', 
-    '#C2DBC133', 
+    'rgba(226, 242, 255, 0.66)', 
+    'rgba(217, 255, 203, 0.46)', 
+    'rgba(255, 211, 236, 0.52)', 
     '#FF704333'
   ];
   
@@ -220,7 +220,7 @@ heatmapOptions: any;
       label: 'Formations les plus suivies',
       data: data.data,
       backgroundColor: backgroundColors,
-      borderColor: ['#640D6B', '#B51B75', '#E65C19', '#F8D082', '#F4511E'],
+      borderColor: ['#640D6B', 'rgb(18, 0, 78)', 'rgb(50, 131, 20)', 'rgb(131, 20, 83)', '#F4511E'],
       borderWidth: 1
     }]
   };
@@ -504,17 +504,9 @@ prepareAnalyticsData(): void {
 }
 
 // Méthode utilitaire pour le sparkline
-generateSparkline(data: number[]): string {
-    const max = Math.max(...data);
-    const min = Math.min(...data);
-    const range = max - min || 1;
-    
-    return data.map((value, index) => {
-        const x = (index / (data.length - 1)) * 100;
-        const y = 30 - ((value - min) / range) * 30;
-        return `${x},${y}`;
-    }).join(' ');
-}
+
+
+
 
 
 // Modifiez prepareChartData
@@ -539,9 +531,7 @@ prepareChartData(): void {
         datasets: diplomaData.datasets
     };
 
-    // 3. Graphique radar des expériences
-    // 3. Graphique radar des expériences
-// 3. Graphique linéaire des expériences par société
+    
 // 3. Graphique linéaire des expériences par société
 const societeCounts = this.countOccurrences(this.employes.flatMap(e => e.societesExperience?.split(', ') || []));
 this.experienceLineChartData = {
@@ -583,22 +573,24 @@ this.experienceLineChartData = {
 
 lineOptions: any = {
   responsive: true,
+  maintainAspectRatio: false, // Doit être false
   plugins: {
-      legend: {
-          position: 'top'
-      },
-      title: {
-          display: false
-      }
+    legend: {
+      display: false
+    }
   },
   scales: {
-      y: {
-          beginAtZero: true,
-          title: {
-              display: true,
-              text: 'Nombre d\'expériences'
-          }
+    y: {
+      beginAtZero: true,
+      grid: {
+        drawBorder: false
       }
+    },
+    x: {
+      grid: {
+        display: false
+      }
+    }
   }
 };
 
@@ -1132,7 +1124,6 @@ private exportByDirection(): void {
   const worksheetData: any[] = [];
 
   for (const direction of Object.keys(directionGroups)) {
-    // Ajouter un titre de section avec le nom de la direction et le nombre d’employés
     worksheetData.push({
       Direction: direction,
       Employés: `Total: ${directionGroups[direction].length}`

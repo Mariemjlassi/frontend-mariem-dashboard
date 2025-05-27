@@ -402,7 +402,6 @@
       /* Fond bleu très clair */
       padding: 4px 8px;
       border-radius: 4px;
-      font-family: monospace;
       font-size: 0.9rem;
       color: #2563eb;
       /* Texte bleu */
@@ -1798,14 +1797,18 @@ Problème de validation pour :
             <td *ngIf="selectedFormation.valide">
               <div *ngIf="!employe.resultat" class="evaluation-form">
                 <div class="radio-options">
-                  <div *ngFor="let option of resultatOptions" class="radio-option">
-                    <p-radioButton [name]="'eval_'+employe.id" [value]="option.value" [(ngModel)]="employe.tempResultat"
-                      (onClick)="updateResultat(selectedFormation.id, employe.id, option.value, employe)">
-                    </p-radioButton>
-                    <label (click)="updateResultat(selectedFormation.id, employe.id, option.value, employe)">
-                      {{option.label}}
-                    </label>
-                  </div>
+                <div *ngFor="let option of selectedFormation?.sousTypeFormation === 'POLYCOMPETENCE' ? resultatOptionss : resultatOptions" class="radio-option">
+  <p-radioButton
+    [name]="'eval_'+employe.id"
+    [value]="option.value"
+    [(ngModel)]="employe.tempResultat"
+    (onClick)="updateResultat(selectedFormation.id, employe.id, option.value, employe)">
+  </p-radioButton>
+  <label (click)="updateResultat(selectedFormation.id, employe.id, option.value, employe)">
+    {{option.label}}
+  </label>
+</div>
+
                 </div>
               </div>
 
@@ -2117,7 +2120,7 @@ Problème de validation pour :
           <label for="selectedCities">Sélectionner des employés</label>
           <p-multiselect [options]="cities" formControlName="selectedCities" placeholder="Sélectionner des employés"
             [maxSelectedLabels]="3" [filter]="true" filterPlaceholder="Rechercher un employé" optionLabel="name"
-            optionValue="code">
+            optionValue="code" >
           </p-multiselect>
 
           <div *ngIf="isPolycompetence() && selectedEmployees.length > 0" class="selected-employees">
@@ -2275,7 +2278,7 @@ Problème de validation pour :
   <button pButton label="Annuler" icon="pi pi-times" class="p-button-text" 
           (click)="closeDialog()" severity="danger"></button>
   
-  <button *ngIf="shouldShowEnteteSection()" pButton label="Aperçu" icon="pi pi-eye" class="p-button-text" 
+  <button *ngIf="shouldShowEnteteSection() && isPolyOrIntegration()" pButton label="Aperçu" icon="pi pi-eye" class="p-button-text" 
           (click)="showPreview()" severity="info"></button>
   
   <button pButton label="Enregistrer" icon="pi pi-check" class="p-button-text" 
@@ -2297,7 +2300,7 @@ Problème de validation pour :
           padding: 20px;
           border: 2px solid black;
           box-shadow: 0 0 10px rgba(0,0,0,0.2);
-          font-family: Arial, sans-serif;
+          
           background-color: white;
         ">
 
@@ -2473,11 +2476,11 @@ Problème de validation pour :
       </table>
 
       <div style="margin-top: 20px; font-family: Arial, sans-serif; font-size: 14px;">
-        <p style="font-weight: bold; color: #333;">A - Connaissances suffisantes et maîtrisées</p>
-        <p style="font-weight: bold; color: #4CAF50;">B - Connaissances suffisantes</p>
-        <p style="font-weight: bold; color: #FF9800;">C - Connaissances Passables</p>
-        <p style="font-weight: bold; color: #F44336;">D - Connaissances médiocres</p>
-        <p style="font-weight: bold; color: #2196F3;">* Critère d’acceptation : B</p>
+        <p style="font-weight: bold; color: #000000;">A - Connaissances suffisantes et maîtrisées</p>
+        <p style="font-weight: bold; color: #000000;">B - Connaissances suffisantes</p>
+        <p style="font-weight: bold; color: #000000;">C - Connaissances Passables</p>
+        <p style="font-weight: bold; color: #000000;">D - Connaissances médiocres</p>
+        <p style="font-weight: bold; color: #000000;">* Critère d’acceptation : B</p>
       </div>
 
       <div
@@ -2812,6 +2815,17 @@ Problème de validation pour :
 
           <!-- Section employés pour POLYCOMPETENCE -->
         <!-- Section employés pour POLYCOMPETENCE -->
+         
+
+
+          <!-- Section PDF 
+        <div class="p-field">
+          <h4>Document PDF</h4>
+          <p>Voici le document PDF associé au poste sélectionné :</p>
+          <iframe [src]="pdfUrl" width="100%" height="400px" style="border: 1px solid #ddd; border-radius: 4px;"></iframe>
+        </div>-->
+        </div>
+      </div>
 <div class="p-field">
   <label for="selectedCitiesModif">Participants</label>
   <p-multiselect 
@@ -2863,16 +2877,6 @@ Problème de validation pour :
   </div>
 </div>
 
-
-          <!-- Section PDF 
-        <div class="p-field">
-          <h4>Document PDF</h4>
-          <p>Voici le document PDF associé au poste sélectionné :</p>
-          <iframe [src]="pdfUrl" width="100%" height="400px" style="border: 1px solid #ddd; border-radius: 4px;"></iframe>
-        </div>-->
-        </div>
-      </div>
-
       <!-- Boutons -->
 
     </form>
@@ -2881,9 +2885,11 @@ Problème de validation pour :
     <button pButton label="Annuler" icon="pi pi-times" class="p-button-text" 
             (click)="closeModificationDialog()" severity="danger"></button>
     
-    <button pButton label="Aperçu" icon="pi pi-eye" class="p-button-text" 
-            (click)="showPreviewModification()" severity="info"></button>
-    
+  <button *ngIf="isPolyOrIntegrationModif()"
+        pButton label="Aperçu" icon="pi pi-eye" class="p-button-text"
+        (click)="showPreviewModification()" severity="info">
+</button>
+
     <button pButton label="Enregistrer" icon="pi pi-check" class="p-button-text" 
             (click)="submitModificationForm()" type="submit" severity="success"></button>
   </div>
@@ -2893,8 +2899,7 @@ Problème de validation pour :
   <p-toast position="top-right"></p-toast>
   <p-confirmDialog header="Confirmation" icon="pi pi-exclamation-triangle" [style]="{ width: '450px' }"
     acceptLabel="Oui" rejectLabel="Non"></p-confirmDialog>
-      <p-confirmDialog header="Confirmation" icon="pi pi-exclamation-triangle" [style]="{ width: '450px' }"
-    acceptLabel="Oui" rejectLabel="Non"></p-confirmDialog>
+
     
    
     <p-dialog header="Créer un Programme Complémentaire" [(visible)]="displayComplementaryProgramDialog" [modal]="true"

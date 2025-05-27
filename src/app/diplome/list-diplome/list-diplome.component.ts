@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, Input, OnInit } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -42,69 +42,92 @@ import { CalendarModule } from 'primeng/calendar';
     ToastModule,
     ConfirmDialogModule,
     AutoCompleteModule,
-    CalendarModule
+    CalendarModule,
+    InputTextModule
   ],
   templateUrl: './list-diplome.component.html',
   styleUrl: './list-diplome.component.css',
   providers: [MessageService, ConfirmationService],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class ListDiplomeComponent implements OnInit {
   @Input() employeId!: number;
 
   diplomes: Diplome[] = [];
-  typeDiplomes: TypeDiplome[] = [];
-  diplomeForm!: FormGroup;
-  isEditing = false;
-  diplomeToEdit: Diplome | null = null;
-  diplomesExistants: Diplome[] = []; // Liste des diplômes en base
-  filteredDiplomes: Diplome[] = [];
-  editDiplomeForm: FormGroup;
+  allDiplomes: Diplome[] = []; // Tous les diplômes disponibles
   addDiplomeVisible = false;
   editDiplomeVisible = false;
+  diplomeToEdit: Diplome | null = null;
+
+  // Formulaire pour assigner un diplôme existant
+  assignForm: FormGroup;
+
+  // Formulaire pour modifier l'association
+  editAssignForm: FormGroup;
   
 
   constructor(
     private diplomeService: DiplomeService,
-    private TypeDiplomeservice: TypeDiplomeService,
     private fb: FormBuilder,
     private confirmationService: ConfirmationService,
     private messageService: MessageService
   ) {
-    this.diplomeForm = this.fb.group({
-      libelle: ['', Validators.required],
-      typeDiplomeId: [null, Validators.required],
+    this.assignForm = this.fb.group({
+      diplomeId: [null, Validators.required],
       dateObtention: [null, Validators.required]
     });
-    
-    this.editDiplomeForm = this.fb.group({
-      libelle: ['', Validators.required],
-      typeDiplomeId: [null, Validators.required],
-      dateObtention: [null, Validators.required]
+
+    this.editAssignForm = this.fb.group({
+      diplomeId: [null, Validators.required], // Ajoutez ce contrôle
+    dateObtention: [null, Validators.required]
     });
   }
 
+  
   ngOnInit(): void {
-    this.loadDiplomes();
-    this.loadTypeDiplomes();
+    this.loadEmployeDiplomes();
     this.loadAllDiplomes();
   }
 
+  loadAllDiplomes() {
+    this.diplomeService.getAllDiplomes().subscribe({
+      next: (data) => this.allDiplomes = data,
+      error: (err) => console.error('Erreur chargement tous diplômes:', err)
+    });
+  }
+
+
+  loadEmployeDiplomes() {
+    this.diplomeService.getDiplomesByEmploye(this.employeId).subscribe({
+      next: (data) => this.diplomes = data,
+      error: (err) => console.error('Erreur chargement diplômes:', err)
+    });
+  }
+
   showAddDiplomeDialog(): void {
-    this.diplomeForm.reset();
+    this.assignForm.reset();
     this.addDiplomeVisible = true;
   }
 
-  showEditDiplomeDialog(diplome: Diplome): void {
+ private formatDateForCalendar(date: Date): Date {
+    // Convertir en date locale sans heure
+    return new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+    );
+}
+
+showEditDiplomeDialog(diplome: Diplome): void {
     this.diplomeToEdit = diplome;
-    this.editDiplomeForm.patchValue({
-      libelle: diplome.libelle,
-      typeDiplomeId: diplome.typeDiplome?.id,
-      dateObtention: diplome.dateObtention ? new Date(diplome.dateObtention) : null
+    const dateObtention = diplome.dateObtention ? new Date(diplome.dateObtention) : null;
+    
+    this.editAssignForm.patchValue({
+        diplomeId: diplome.id,
+        dateObtention: dateObtention ? this.formatDateForCalendar(dateObtention) : null
     });
     this.editDiplomeVisible = true;
-  }
-
-
+}
   loadDiplomes() {
     this.diplomeService
       .getDiplomesByEmploye(this.employeId)
@@ -114,28 +137,23 @@ export class ListDiplomeComponent implements OnInit {
       });
   }
 
-  loadTypeDiplomes() {
-    this.TypeDiplomeservice.getAllTypeDiplomeNonArchives().subscribe((data) => {
-      this.typeDiplomes = data;
-      console.log('Types de diplômes récupérés :', this.typeDiplomes);
-    });
-  }
+  assignDiplome(): void {
+    if (this.assignForm.invalid) return;
 
-  // Modifiez la méthode addDiplome()
-addDiplome(): void {
-  if (this.diplomeForm.invalid) return;
-  
-  const { libelle, typeDiplomeId, dateObtention } = this.diplomeForm.value;
-  
-  this.diplomeService.addDiplomeEmploye(this.employeId, libelle, typeDiplomeId, dateObtention)
-    .subscribe({
+    const { diplomeId, dateObtention } = this.assignForm.value;
+
+    this.diplomeService.assignDiplomeToEmploye(
+      this.employeId,
+      diplomeId,
+      dateObtention
+    ).subscribe({
       next: () => {
-        this.loadDiplomes();
+        this.loadEmployeDiplomes();
         this.addDiplomeVisible = false;
         this.messageService.add({
           severity: 'success',
           summary: 'Succès',
-          detail: 'Diplôme ajouté avec succès',
+          detail: 'Diplôme assigné avec succès',
           life: 3000
         });
       },
@@ -143,69 +161,74 @@ addDiplome(): void {
         this.messageService.add({
           severity: 'error',
           summary: 'Erreur',
-          detail: "Erreur lors de l'ajout du diplôme",
+          detail: "Erreur lors de l'assignation du diplôme",
           life: 3000
         });
       }
     });
-}
+  }
 
-// Modifiez la méthode updateDiplome()
-updateDiplome(): void {
-  if (this.editDiplomeForm.invalid || !this.diplomeToEdit?.id) return;
-  
-  const { libelle, typeDiplomeId, dateObtention } = this.editDiplomeForm.value;
-  
-  this.diplomeService.updateDiplomeEmploye(
-    this.diplomeToEdit.id,
+updateAssignment(): void {
+  if (this.editAssignForm.invalid || !this.diplomeToEdit) return;
+
+  const { diplomeId, dateObtention } = this.editAssignForm.value;
+
+  this.diplomeService.updateDiplomeAssignment(
+    this.diplomeToEdit.id!, // oldDiplomeId
     this.employeId,
-    libelle,
-    typeDiplomeId,
+    diplomeId, // newDiplomeId
     dateObtention
   ).subscribe({
     next: () => {
-      this.loadDiplomes();
+      this.loadEmployeDiplomes();
       this.editDiplomeVisible = false;
       this.messageService.add({
         severity: 'success',
         summary: 'Succès',
-        detail: 'Diplôme modifié avec succès',
+        detail: 'Assignation mise à jour avec succès',
         life: 3000
       });
     },
     error: (err) => {
+      let detail = 'Erreur lors de la mise à jour';
+      if (err.error?.message) {
+        detail = err.error.message;
+      } else if (err.status === 404) {
+        detail = 'Diplôme non trouvé';
+      }
+      
       this.messageService.add({
         severity: 'error',
         summary: 'Erreur',
-        detail: 'Erreur lors de la modification du diplôme',
-        life: 3000
+        detail: detail,
+        life: 5000
       });
     }
   });
 }
 
-deleteDiplomeEmploye(id: number) {
-  this.diplomeService.deleteDiplomeEmploye(id, this.employeId).subscribe({
-    next: () => {
-      this.loadDiplomes();
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Succès',
-        detail: 'Diplôme supprimé avec succès',
-        life: 3000
-      });
-    },
-    error: (err) => {
-      console.error('Erreur suppression:', err);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Erreur',
-        detail: 'Erreur lors de la suppression du diplôme',
-        life: 3000
-      });
-    }
-  });
-}
+  deleteDiplomeEmploye(id: number) {
+    this.diplomeService.deleteDiplomeEmploye(id, this.employeId).subscribe({
+      next: () => {
+        this.loadEmployeDiplomes();
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Succès',
+          detail: 'Diplôme supprimé avec succès',
+          life: 3000
+        });
+      },
+      error: (err) => {
+        console.error('Erreur suppression:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Erreur',
+          detail: 'Erreur lors de la suppression du diplôme',
+          life: 3000
+        });
+      }
+    });
+  }
 
 
 confirmDelete(id: number): void {
@@ -235,55 +258,15 @@ confirmDelete(id: number): void {
 
   
   
-  editDiplome(diplome: Diplome) {
-    this.diplomeToEdit = diplome;
-    this.isEditing = true;
-    this.diplomeForm.patchValue({
-      libelle: diplome.libelle,
-      typeDiplomeId: diplome.typeDiplome?.id,
-    });
-  }
+  
+  
 
   
-  resetForm() {
-    this.isEditing = false;
-    this.diplomeToEdit = null;
-    this.diplomeForm.reset();
-  }
-
-  loadAllDiplomes() {
-    this.diplomeService.getAllDiplomes().subscribe((data) => {
-      this.diplomesExistants = data;
-    });
-  }
-
-  // Filtrer les diplômes existants
-  filterDiplomes(event: any) {
-    let query = event.query.toLowerCase();
-    this.filteredDiplomes = this.diplomesExistants.filter((d) =>
-      d.libelle.toLowerCase().includes(query)
-    );
-  }
 
   // Quand un diplôme est sélectionné, on met à jour le formulaire
-  onDiplomeSelect(event: any) {
-    if (event && event.value) {
-      const selectedDiplome: Diplome = event.value;
-      this.diplomeForm.patchValue({ libelle: selectedDiplome.libelle });
-      this.diplomeForm.get('libelle')?.markAsTouched();
-      this.diplomeForm.get('libelle')?.updateValueAndValidity();
-    }
-  }
-
-  onEditDiplomeSelect(event: any) {
-    if (event && event.value) {
-      const selectedDiplome: Diplome = event.value;
-      this.editDiplomeForm.patchValue({ libelle: selectedDiplome.libelle });
-      this.editDiplomeForm.get('libelle')?.markAsTouched();
-      this.editDiplomeForm.get('libelle')?.updateValueAndValidity();
-    }
-  }
   
+
+ 
 
   // Dans votre composant
   getTypeDiplomeIcon(type: string): string {

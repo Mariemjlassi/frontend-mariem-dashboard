@@ -8,14 +8,15 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { CalendarModule } from 'primeng/calendar';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 
 @Component({
   selector: 'app-stage',
-  imports: [ButtonModule, FormsModule, DialogModule,ReactiveFormsModule, CommonModule, InputTextModule, TableModule, CalendarModule, ToastModule],
+  imports: [ButtonModule, FormsModule, DialogModule,ReactiveFormsModule, CommonModule, InputTextModule, TableModule, CalendarModule, ToastModule, ConfirmDialogModule],
   templateUrl: './stage.component.html',
   styleUrl: './stage.component.css',
-  providers: [MessageService]
+  providers: [MessageService, ConfirmationService]
 })
 export class StageComponent implements OnInit{
   
@@ -39,7 +40,7 @@ export class StageComponent implements OnInit{
     dateFin: new FormControl('', Validators.required)
   });
 
-  constructor(private stageService: StageService, private messageService: MessageService) {}
+  constructor(private stageService: StageService, private messageService: MessageService, private confirmationService : ConfirmationService) {}
 
 
   ngOnInit(): void {
@@ -170,6 +171,31 @@ updateStage() {
         severity: 'error',
         summary: 'Erreur',
         detail: 'Une erreur est survenue lors de la mise à jour du stage.'
+      });
+    }
+  });
+}
+
+confirmDelete(id: number): void {
+  this.confirmationService.confirm({
+    message: 'Êtes-vous sûr de vouloir supprimer ce stage?',
+    header: 'Confirmation',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Oui',
+    rejectLabel: 'Non',
+    acceptButtonStyleClass: 'p-button-danger',
+    rejectButtonStyleClass: 'p-button-secondary',
+    acceptIcon: 'pi pi-check',
+    rejectIcon: 'pi pi-times',
+    accept: () => {
+      this.deleteStage(id);
+    },
+    reject: () => {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Annulé',
+        detail: 'Suppression annulée',
+        life: 3000
       });
     }
   });

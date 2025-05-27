@@ -7,7 +7,7 @@
                    placeholder="Type de rapport" [style]="{'width': '200px'}"></p-dropdown>
         
         <button pButton icon="pi pi-file-excel" label="Exporter Excel" 
-                class="p-button-secondary" 
+                class="p-button-primary" 
                 (click)="exportToExcel()"></button>
                 
         <button pButton icon="pi pi-filter-slash" label="Réinitialiser" 
@@ -250,39 +250,39 @@
             </ng-template>
         </p-table>
     </div>
-</div><p-dialog [(visible)]="displayEmployeeDialog" [style]="{width: '50vw'}" [maximizable]="true" [modal]="true"
-[draggable]="false" [resizable]="false" header="Détails de l'employé">
-<div *ngIf="selectedEmployee" class="employee-details">
-<!-- Informations de base -->
- 
+</div>
+<p-dialog [(visible)]="displayEmployeeDialog" [style]="{width: '65vw', maxWidth: '1000px'}" 
+          [maximizable]="true" [modal]="true" [draggable]="false" [resizable]="false" 
+          header="Détails du Profil Employé" [breakpoints]="{'960px': '75vw', '640px': '90vw'}">
+  
+  <div *ngIf="selectedEmployee" class="employee-details-container">
+    
+    <!-- En-tête avec photo et infos principales -->
+    <div class="employee-header">
+      <div class="employee-avatar">
+        <i class="pi pi-user" style="font-size: 3rem; color: #64748b"></i>
+      </div>
+      <div class="employee-main-info">
+        <h2>{{ selectedEmployee.nom }} {{ selectedEmployee.prenom }}</h2>
+        <div class="employee-meta">
+          <span class="employee-id">
+            <i class="pi pi-id-card"></i> Matricule: {{ selectedEmployee.matricule || 'N/A' }}
+          </span>
+          <span class="employee-status">
+            <i class="pi pi-briefcase"></i> {{ selectedEmployee.posteActuel || 'Poste non spécifié' }}
+          </span>
+        </div>
+      </div>
+      <div class="employee-contact">
+        <p><i class="pi pi-envelope"></i> {{ selectedEmployee.email || 'Email non disponible' }}</p>
+        <p><i class="pi pi-building"></i> {{ selectedEmployee.direction || 'Direction non spécifiée' }}</p>
+      </div>
+    </div>
 
-<div class="grid mb-4">
-<div class="col-12 md:col-6">
-<div class="field">
-<label>Nom complet:</label>
-<span>{{ selectedEmployee.nom }} {{ selectedEmployee.prenom }}</span>
-</div>
-<div class="field">
-<label>Matricule:</label>
-<span>{{ selectedEmployee.matricule }}</span>
-</div>
-</div>
-<div class="col-12 md:col-6">
-<div class="field">
-<label>Email:</label>
-<span><a href="mailto:{{selectedEmployee.email}}">{{ selectedEmployee.email }}</a></span>
-</div>
-<div class="field">
-<label>Poste/Direction:</label>
-<span>{{ selectedEmployee.posteActuel }} ({{ selectedEmployee.direction }})</span>
-</div>
-</div>
-</div>
-
-<!-- Onglets -->
-<p-tabView>
-<!-- Onglet Diplômes -->
-<p-tabPanel header="Diplômes">
+    <!-- Onglets principaux -->
+    <p-tabView class="employee-tabs">
+      
+      <p-tabPanel header="Diplômes" leftIcon="pi pi-graduation-cap">
 <div *ngIf="selectedEmployee.diplomes; else noDiplomas" class="diplomas-table">
 <p-table [value]="getDiplomasArray(selectedEmployee)" [scrollable]="true" scrollHeight="200px">
   <ng-template pTemplate="header">
@@ -305,57 +305,81 @@
 <p class="no-data-message">Aucun diplôme enregistré</p>
 </ng-template>
 </p-tabPanel>
+      
 
-<!-- Onglet Expériences -->
-<p-tabPanel header="Expériences">
-<div *ngIf="selectedEmployee.societesExperience; else noExperiences" class="experiences-list">
-<div *ngFor="let exp of getExperiences(selectedEmployee)" class="experience-item">
-  <div class="experience-header">
-    <h5>{{ exp.societe }}</h5>
-    <span class="experience-period">{{ exp.periode }}</span>
+      <!-- Onglet Expérience Professionnelle -->
+      <p-tabPanel header="Expérience" leftIcon="pi pi-briefcase">
+        <div *ngIf="selectedEmployee.societesExperience; else noExperiences">
+          <div class="timeline-container">
+            <div *ngFor="let exp of getExperiences(selectedEmployee)" class="timeline-item">
+              <div class="timeline-badge">
+                <i class="pi pi-building"></i>
+              </div>
+              <div class="timeline-content">
+                <h4>{{ exp.societe }}</h4>
+                <div class="timeline-meta">
+                  <span class="timeline-period">{{ exp.periode }}</span>
+                  <span class="timeline-poste">{{ exp.poste }}</span>
+                </div>
+                
+              </div>
+            </div>
+          </div>
+        </div>
+        <ng-template #noExperiences>
+          <div class="empty-state">
+            <i class="pi pi-info-circle"></i>
+            <p>Aucune expérience professionnelle enregistrée</p>
+          </div>
+        </ng-template>
+      </p-tabPanel>
+
+      <!-- Onglet Formation -->
+      <p-tabPanel header="Formation" leftIcon="pi pi-book">
+        <div *ngIf="selectedEmployee.titresFormations; else noFormations">
+          <div class="formation-list">
+            <div *ngFor="let formation of getFormationsArray(selectedEmployee)" class="formation-card">
+              <div class="formation-header">
+                <h4>{{ formation.titre }}</h4>
+                <span class="formation-type">{{ formation.type }}</span>
+              </div>
+              <div class="formation-details">
+                <span class="formation-period">
+                  <i class="pi pi-calendar"></i> {{ formation.periode }}
+                </span>
+                <span class="formation-subtype">
+                  <i class="pi pi-tag"></i> {{ formation.sousType || 'N/A' }}
+                </span>
+              </div>
+              <div class="formation-footer" *ngIf="formation.description">
+                <p>{{ formation.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ng-template #noFormations>
+          <div class="empty-state">
+            <i class="pi pi-info-circle"></i>
+            <p>Aucune formation enregistrée</p>
+          </div>
+        </ng-template>
+      </p-tabPanel>
+
+      <!-- Onglet Documents -->
+      
+
+    </p-tabView>
   </div>
-  <p class="experience-poste">{{ exp.poste }}</p>
-</div>
-</div>
-<ng-template #noExperiences>
-<p class="no-data-message">Aucune expérience professionnelle enregistrée</p>
-</ng-template>
-</p-tabPanel>
 
-
-  <!-- Nouvel onglet Formations -->
-  <p-tabPanel header="Formations">
-    <div *ngIf="selectedEmployee.titresFormations; else noFormations" class="formations-table">
-      <p-table [value]="getFormationsArray(selectedEmployee)" [scrollable]="true" scrollHeight="200px">
-        <ng-template pTemplate="header">
-          <tr>
-            <th>Titre</th>
-            <th>Type</th>
-            <th>Sous-type</th>
-            <th>Période</th>
-          </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-formation>
-          <tr>
-            <td>{{ formation.titre }}</td>
-            <td>{{ formation.type }}</td>
-            <td>{{ formation.sousType }}</td>
-            <td>{{ formation.periode }}</td>
-          </tr>
-        </ng-template>
-      </p-table>
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      
+      <button pButton icon="pi pi-print" label="Imprimer"
+      (click)="exportEmployeePdf(selectedEmployee!)" 
+              class="p-button-outlined p-button-secondary"></button>
+      <button pButton icon="pi pi-times" label="Fermer" 
+              class="p-button-contrast" 
+              (click)="displayEmployeeDialog=false"></button>
     </div>
-    <ng-template #noFormations>
-      <p class="no-data-message">Aucune formation enregistrée</p>
-    </ng-template>
-  </p-tabPanel>
-</p-tabView>
-</div>
-
-<ng-template pTemplate="footer">
-<button pButton pRipple icon="pi pi-print" label="Imprimer" 
-        class="p-button-secondary" 
-        (click)="exportEmployeePdf(selectedEmployee!)"></button>
-<button pButton pRipple icon="pi pi-check" label="Fermer" (click)="displayEmployeeDialog=false"></button>
-</ng-template>
+  </ng-template>
 </p-dialog>

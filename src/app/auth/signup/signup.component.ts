@@ -36,11 +36,11 @@ export class SignupComponent implements OnInit {
   loading = false;
   
   roleOptions = [
-    { label: 'Ressources Humaines', value: 'RH', icon: 'pi pi-users' },
-    { label: 'Directeur', value: 'DIRECTEUR', icon: 'pi pi-user' },
-    { label: 'Responsable', value: 'RESPONSABLE', icon: 'pi pi-id-card' },
+    { label: 'Ressources Humaines', value: 'RH' },
+    { label: 'Directeur', value: 'DIRECTEUR' },
+    { label: 'Responsable', value: 'RESPONSABLE' },
     {
-      label:'Administrateur', value:'ADMIN',  icon: 'pi pi-id-card'
+      label:'Administrateur', value:'ADMIN'
     }
   ];
 
@@ -87,10 +87,7 @@ export class SignupComponent implements OnInit {
     }
   }
 
-  getRoleIcon(roleValue: string): string {
-    const role = this.roleOptions.find(r => r.value === roleValue);
-    return role ? role.icon : 'pi pi-question-circle';
-  }
+  
 
   submitForm() {
     if (this.registerForm.invalid) {

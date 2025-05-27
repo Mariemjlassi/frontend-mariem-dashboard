@@ -175,7 +175,7 @@ export class DisciplineComponent implements OnInit{
 
   confirmDelete(id: number): void {
     this.confirmationService.confirm({
-      message: 'Êtes-vous sûr de vouloir supprimer ce diplôme?',
+      message: 'Êtes-vous sûr de vouloir supprimer cette discipline ?',
       header: 'Confirmation',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Oui',

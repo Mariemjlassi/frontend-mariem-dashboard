@@ -52,8 +52,8 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'signup', component: SignupComponent, canActivate: [adminOrSuperadminGuard] },
   { path: 'sidebar', component: SidebarComponent, canActivate: [authGuard] },
-  { path: 'add-employe', component: AddEmployeComponent },
-  { path: 'list-employe-existants', component: EmployeListComponent },
+  { path: 'add-employe', component: AddEmployeComponent, canActivate :[authGuard] },
+  { path: 'list-employe-existants', component: EmployeListComponent, canActivate : [authGuard] },
   {
     path: 'list-site',
     component: ListSiteComponent,
@@ -62,7 +62,7 @@ export const routes: Routes = [
   {
     path: 'list-directions',
     component: ListDirectionComponent,
-    canActivate: [guardGuard],
+    canActivate: [authGuard],
   },
   {
     path: 'list-directions-archives',

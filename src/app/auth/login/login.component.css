@@ -11,7 +11,7 @@
 .login-container {
     width: 100%;
     max-width: 1200px;
-    padding: 20px;
+    padding: 10px;
 }
 
 .attempts-warning {
@@ -41,7 +41,7 @@
     border-radius: 20px;
     box-shadow: 0 15px 30px rgba(43, 52, 103, 0.1);
     overflow: hidden;
-    height: 600px;
+    height: 700px;
 }
 
 .form-section {
@@ -53,6 +53,7 @@
 }
 
 .form-header {
+    
     margin-bottom: 40px;
     text-align: center;
 }

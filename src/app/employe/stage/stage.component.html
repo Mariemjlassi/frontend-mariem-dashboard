@@ -1,5 +1,7 @@
 <div class="card">
-  <p-toast></p-toast>
+ <p-toast></p-toast>
+  <p-confirmDialog [style]="{width: '450px'}" header="Confirmation" icon="pi pi-exclamation-triangle">
+  </p-confirmDialog>
 
   <div class="card-content">
     <!-- Bouton pour ajouter un nouveau stage -->
@@ -31,7 +33,7 @@
                   (click)="showEditStageDialog(stage)" class="action-button">
               </p-button>
               <p-button icon="pi pi-times" severity="danger" [rounded]="true" [text]="true"
-                  (click)="deleteStage(stage.id!)" class="action-button">
+                  (click)="confirmDelete(stage.id!)" class="action-button">
               </p-button>
             </td>
           </tr>

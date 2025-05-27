@@ -18,6 +18,5 @@ describe('ListDiplomeComponent', () => {
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
   });
 });

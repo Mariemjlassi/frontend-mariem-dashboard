@@ -14,12 +14,12 @@
   </div>
 <style>
 @media print {
-  /* Cache tout ce qui n'est pas #ficheImpression */
+  
   body * {
     visibility: hidden;
   }
 
-  /* Affiche uniquement le contenu de ficheImpression */
+
   #ficheImpression, #ficheImpression * {
     visibility: visible;
   }
@@ -127,7 +127,7 @@
    <p><strong>Affectation :</strong> {{ employeeDirection }}</p>
 
     <p><strong>Poste projeté :</strong> {{ formation?.titrePoste }}</p>
-    <p><strong>Période de formation :</strong> Du {{ formation?.dateDebutPrevue }} au {{ formation?.dateFinPrevue }}</p>
+    <p><strong>Période de formation :</strong> Du {{formatDateSimple(formation?.dateDebutPrevue)  }} au {{formatDateSimple(formation?.dateFinPrevue)  }}</p>
     <p><strong>Responsable de suivi :</strong> {{ formation?.responsableEvaluation.nom }} {{ formation?.responsableEvaluation.prenom }}</p>
   </div>
   
@@ -167,7 +167,7 @@
     <tbody>
       <tr *ngFor="let programme of poste?.lesProgrammesDeFormation; let i = index" style="page-break-inside: avoid;">
         <td style="border: 1px solid black; padding: 8px;">{{ programme }}</td>
-        <td style="border: 1px solid black; padding: 8px;">{{ formation?.formateur }}</td>
+        <td style="border: 1px solid black; padding: 8px;">    {{ formation?.periodes[i]?.formateur || 'Non spécifié' }}</td>
         <td style="border: 1px solid black; padding: 8px;">
           <div *ngIf="formation?.periodes && formation.periodes[i]">
             {{ formation.periodes[i].dateDebut }} au {{ formation.periodes[i].dateFin }}
@@ -206,11 +206,11 @@
   </table>
   
   <div style="margin-top: 20px; font-family: Arial, sans-serif; font-size: 14px;">
-    <p style="font-weight: bold; color: #333;">A - Connaissances suffisantes et maîtrisées</p>
-    <p style="font-weight: bold; color: #4CAF50;">B - Connaissances suffisantes</p>
-    <p style="font-weight: bold; color: #FF9800;">C - Connaissances Passables</p>
-    <p style="font-weight: bold; color: #F44336;">D - Connaissances médiocres</p>
-    <p style="font-weight: bold; color: #2196F3;">* Critère d’acceptation : B</p>
+    <p style="font-weight: bold; color: #000;">A - Connaissances suffisantes et maîtrisées</p>
+    <p style="font-weight: bold; color: #000;">B - Connaissances suffisantes</p>
+    <p style="font-weight: bold; color: #000;">C - Connaissances Passables</p>
+    <p style="font-weight: bold; color: #000;">D - Connaissances médiocres</p>
+    <p style="font-weight: bold; color: #000;">* Critère d’acceptation : B</p>
   </div>
   </main>
   <footer id="page-footer">

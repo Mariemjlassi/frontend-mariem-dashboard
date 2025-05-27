@@ -476,16 +476,19 @@ ngAfterViewInit() {
       this.participantsMap[employe.id] = formation.id;
 
       this.Emoloyeservice.getDocumentByEmployeIdAndFormationId(employe.id, formation.id).subscribe({
-        next: (response: Blob) => {
-          const fileURL = URL.createObjectURL(new Blob([response], { type: 'application/pdf' }));
-          this.pdfUrls[employe.id] = this.sanitizer.bypassSecurityTrustResourceUrl(fileURL);
-          
-          documentsCount++;
-          if (documentsCount === formation.employes.length) {
-            this.checkAllEmployeesEvaluated(formation);
-          }
-        }
-      });
+  next: (response: Blob) => {
+    const fileURL = URL.createObjectURL(new Blob([response], { type: 'application/pdf' }));
+    this.pdfUrls[employe.id] = this.sanitizer.bypassSecurityTrustResourceUrl(fileURL);
+  },
+  error: (err) => {
+    console.error('Erreur lors du chargement du PDF', err);
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Document manquant',
+      detail: `Aucun document trouvé pour ${employe.prenom} ${employe.nom}`
+    });
+  }
+});
     });
 }
 
@@ -559,7 +562,7 @@ this.isDocumentCompatible = false;
           summary: 'Document incompatible',
           detail: `Le document sélectionné n'est pas pour cet employé (${nomEmploye} - ${matricule}). Veuillez vérifier.`
         });
-      } /*else if (word1Found && !word2Found) {
+      } else if (word1Found && !word2Found) {
         // Cas 2: word1Found true, word2Found false
         console.log('Document partiellement compatible - problème de formation ou format');
         this.messageService.add({
@@ -567,7 +570,7 @@ this.isDocumentCompatible = false;
           summary: 'Problème de formation',
           detail: 'Cette fiche est bien pour cet employé mais ne correspond pas à cette formation ou il y a un problème de format. Veuillez vérifier.'
         });
-      } */else if (!word1Found && !word2Found) {
+      } else if (!word1Found && !word2Found) {
         // Cas 3: word1Found false, word2Found false
         console.log('Document totalement incompatible');
         this.messageService.add({
@@ -761,14 +764,16 @@ onPdfDialogHide() {
   }
 }
 navigateToPdfReport(employe: any) {
-  console.log('Selected Formation:', this.selectedFormation);
-  console.log('Selected Employee:', employe);
   if (!this.selectedFormation || !employe) {
     console.error('Données manquantes pour générer le PDF');
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Erreur',
+      detail: 'Données manquantes pour générer le PDF'
+    });
     return;
   }
 
-  // Créer l'objet de données à passer
   const pdfData = {
     employee: {
       id: employe.id,
@@ -778,16 +783,39 @@ navigateToPdfReport(employe: any) {
       email: employe.email,
       poste: employe.poste?.titre || 'Non spécifié'
     },
-    formation: this.selectedFormation
-    
+    formation: {
+      ...this.selectedFormation,
+      // Assurez-vous que les dates sont des strings
+      dateDebutPrevue: new Date(this.selectedFormation.dateDebutPrevue),
+      dateFinPrevue: new Date(this.selectedFormation.dateFinPrevue)
+    }
   };
 
-  // Convertir en base64 pour passage dans l'URL
-  const encodedData = btoa(JSON.stringify(pdfData));
-  
-  // Navigation vers la route PDF
-  this.router.navigate(['/pdf', encodedData]);
+  try {
+    // 1. Convertir en JSON
+    const jsonString = JSON.stringify(pdfData);
+    console.log('JSON original:', jsonString);
+    
+    // 2. Encoder en base64
+    const encodedData = btoa(unescape(encodeURIComponent(jsonString)));
+    console.log('Données encodées:', encodedData);
+    
+    // 3. Navigation
+    this.router.navigate(['/pdf', encodedData]);
+  } catch (error) {
+    console.error('Erreur lors de l\'encodage des données:', error);
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Erreur',
+      detail: 'Impossible de générer le PDF',
+      life: 5000
+    });
+  }
 }
+
+
+
+
   async openPdfDialog(pdfUrl: SafeUrl | null, employe: any) {
     if (this.pdfDialogVisible) {
       // Fermez d'abord le dialogue existant
@@ -910,13 +938,9 @@ navigateToPdfReport(employe: any) {
     }
   
     function formatDate(dateString: string): string {
-      const options: Intl.DateTimeFormatOptions = {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      };
-      return new Date(dateString).toLocaleDateString('fr-FR', options);
-    }
+  const date = new Date(dateString);
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+}
   }
   
   
@@ -1093,21 +1117,7 @@ onPdfLoadError(error: any) {
   });
 }
 
-// Nettoyage des ressources
-ngOnDestroy() {
-  // Libérer toutes les URLs Blob
-  if (this.selectedPdfUrl) {
-    const oldUrl = this.sanitizer.sanitize(SecurityContext.RESOURCE_URL, this.selectedPdfUrl);
-    if (oldUrl) URL.revokeObjectURL(oldUrl);
-  }
-  
-  Object.values(this.pdfUrls).forEach(url => {
-    const unsafeUrl = this.sanitizer.sanitize(SecurityContext.RESOURCE_URL, url);
-    if (unsafeUrl) {
-      URL.revokeObjectURL(unsafeUrl);
-    }
-  });
-}
+
 
 
   // Gérer le début du glisser
@@ -1120,117 +1130,7 @@ ngOnDestroy() {
     }
   }
   
-  onDragOver(event: DragEvent) {
-    event.preventDefault(); // Permettre le dépôt
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move'; // Indiquer que le déplacement est autorisé
-    }
-    console.log('Élément en cours de déplacement.');
-  }
-  
-  onDrop(event: DragEvent) {
-    event.preventDefault(); // Empêcher le comportement par défaut
-    
-    // Obtenir la position de l'élément où le texte doit être affiché
-    const pdfContainer = event.currentTarget as HTMLElement;
-    const rect = pdfContainer.getBoundingClientRect();
-  
-    // Calculer les coordonnées de dépôt
-    const dropX = event.clientX - rect.left;
-    const dropY = event.clientY - rect.top;
-  
-    // Récupérer l'échelle actuelle du PDF
-    const pdfViewer = pdfContainer.querySelector('pdf-viewer') as any;
-    const pdfScale = pdfViewer?.pdfViewer?.getPageView(0)?.viewport?.scale || 1;
-  
-    // Convertir les coordonnées en coordonnées PDF
-    const pdfX = dropX / pdfScale;
-    const pdfY = (rect.height - dropY) / pdfScale; // Inverser Y pour s'adapter au PDF
-  
-    // Mettre à jour la position sélectionnée
-    this.selectedPosition = { x: pdfX, y: pdfY };
-  
-    // Ajouter le texte directement au PDF
-    this.addMatriculeToPdf(); 
-  }
-  
-  
-  
-  
-  
-  async addMatriculeToPdf() {
-    // Vérification des conditions nécessaires
-    if (!this.selectedPdfUrl || !this.selectedEmploye?.matricule || !this.selectedPosition) {
-      console.error('Les conditions pour modifier le PDF ne sont pas remplies.');
-      return;
-    }
-  
-    try {
-      // Extraire une URL sécurisée sous forme de chaîne de caractères
-      const sanitizedUrl = this.sanitizer.sanitize(4, this.selectedPdfUrl);
-  
-      // Vérification que l'URL sécurisée est valide
-      if (!sanitizedUrl) {
-        console.error('URL sécurisée invalide.');
-        return;
-      }
-  
-      // Charger le contenu PDF existant
-      const existingPdfBytes = await fetch(sanitizedUrl).then((res) => {
-        if (!res.ok) {
-          throw new Error(`Échec du chargement du PDF : ${res.status} ${res.statusText}`);
-        }
-        return res.arrayBuffer();
-      });
-  
-      // Charger et manipuler le PDF
-      const pdfDoc = await PDFDocument.load(existingPdfBytes);
-  
-      // Obtenir la première page du PDF
-      const firstPage = pdfDoc.getPages()[0];
-      const { x, y } = this.selectedPosition;
-  
-      // Ajouter le matricule directement au PDF de façon permanente
-      firstPage.drawText(`Matricule: ${this.selectedEmploye.matricule}`, {
-        x: x, // Position X
-        y: y, // Position Y
-        size: 12, // Taille du texte
-        font: await pdfDoc.embedFont(StandardFonts.Helvetica), // Police standard
-        color: rgb(0, 0, 0), // Texte en noir
-        lineHeight: 14 // Espacement des lignes
-      });
-  
-      // Sauvegarder le PDF modifié
-      const pdfBytes = await pdfDoc.save();
-  
-      // Convertir les octets en un blob pour le navigateur
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-  
-      // Libérer l'ancienne URL pour éviter des fuites mémoire
-      if (this.selectedPdfUrl instanceof Object) {
-        const oldUrl = this.sanitizer.sanitize(4, this.selectedPdfUrl);
-        if (oldUrl) {
-          URL.revokeObjectURL(oldUrl);
-        }
-      }
-  
-      // Générer une nouvelle URL pour le PDF modifié
-      const modifiedPdfUrl = URL.createObjectURL(blob);
-      this.selectedPdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(modifiedPdfUrl);
-  
-      // Notifier Angular pour détecter les changements
-      this.cdr.detectChanges();
-  
-      console.log('PDF modifié avec succès et matricule ajouté.');
-    } catch (error) {
-      console.error('Erreur lors de la modification du PDF :', error);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Erreur',
-        detail: 'Une erreur est survenue lors de la modification du PDF.',
-      });
-    }
-  }
+ 
   
   reloadPdfViewer() {
     const pdfContainer = document.querySelector('pdf-viewer') as HTMLElement;

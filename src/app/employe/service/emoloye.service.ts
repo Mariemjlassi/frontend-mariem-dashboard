@@ -29,8 +29,8 @@ export class EmoloyeService {
     return this.http.post<Employe>(this.apiUrl, employe, { headers: this.headers });
   }
  getNomDirectionPosteActuel(employeId: number): Observable<string> {
-    return this.http.get(`${this.apiUrl}/${employeId}/poste-actuel/direction`, { responseType: 'text',
-      headers: this.headers  });
+    return this.http.get(`${this.apiUrl}/${employeId}/poste-actuel/direction`,
+       { responseType: 'text', headers: this.headers });
   }
   getAllEmployes(): Observable<EmployeExistant[]> {
     return this.http.get<EmployeExistant[]>(

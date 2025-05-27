@@ -9,6 +9,20 @@
   --dark-text: #2c3e50;
   --light-text: #7f8c8d;
 }
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+
+
+/* Dans votre fichier dashboard.component.css */
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
 .activities-table-container {
   margin-top: 2rem;
 }
@@ -32,6 +46,41 @@
 
 .activity-list {
   padding: 0;
+}
+/* dashboard.component.css */
+.ai-analysis-section {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.ai-analysis-section h4 {
+  color: #2B3467;
+  margin-bottom: 1rem;
+}
+
+.ai-results {
+  white-space: pre-wrap;
+  background: white;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  font-family: monospace;
+}
+
+.analyzing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #2B3467;
+}
+
+.analysis-error {
+  color: #dc3545;
+  padding: 0.5rem;
+  background: #fff5f5;
+  border-radius: 4px;
 }
 
 .activity-item {
@@ -144,6 +193,93 @@
   background-color: #f5f7fa;
   min-height: 100vh;
   margin-left: 30px;
+}
+
+/* Styles pour la section IA */
+.ai-card {
+  margin-top: 20px;
+  min-height: 300px;
+}
+
+.empty-analysis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  min-height: 200px;
+}
+
+.empty-analysis i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+.training-progress {
+  padding: 1rem;
+  text-align: center;
+}
+
+.training-progress p {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.analysis-results {
+  padding: 1rem;
+}
+
+.result-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  border-left: 4px solid #42A5F5;
+}
+
+.result-item.warning {
+  border-left-color: #FFA726;
+  background-color: #FFF3E0;
+}
+
+.result-item.danger {
+  border-left-color: #EF5350;
+  background-color: #FFEBEE;
+}
+
+.result-item i {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  color: #42A5F5;
+}
+
+.result-item.warning i {
+  color: #FFA726;
+}
+
+.result-item.danger i {
+  color: #EF5350;
+}
+
+.result-item h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+}
+
+.result-item p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.analysis-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
 }
 
 .dashboard-header {

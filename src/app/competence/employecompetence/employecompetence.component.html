@@ -44,7 +44,7 @@
       </p-table>
   
       <p-dialog header="Ajouter une compétence" [(visible)]="addDialogVisible" [modal]="true" [closable]="false"
-          [style]="{ width: '25rem' }" [draggable]="false" [resizable]="false">
+          [style]="{ width: '40rem' , height : '30rem'}" [draggable]="false" [resizable]="false">
         <form [formGroup]="competenceForm" (ngSubmit)="addCompetence()">
           <div class="form-group">
             <label for="competenceId">Compétence</label>

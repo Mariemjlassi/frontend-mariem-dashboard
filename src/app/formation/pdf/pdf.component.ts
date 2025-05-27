@@ -31,11 +31,15 @@ employeeDirection: string = '';
 
     if (encodedData) {
       try {
-        const pdfData = JSON.parse(atob(encodedData));
+        // 1. Décoder base64
+        const decodedString = decodeURIComponent(escape(atob(encodedData)));
+        console.log('JSON décodé:', decodedString);
+        
+        // 2. Parser JSON
+        const pdfData = JSON.parse(decodedString);
 
         this.formation = pdfData.formation;
         this.employee = pdfData.employee;
-
         // Appel pour direction
         if (this.employee && this.employee.id) {
           this.Emoloyeservice.getNomDirectionPosteActuel(this.employee.id).subscribe({
@@ -62,6 +66,19 @@ employeeDirection: string = '';
       this.isLoading = false;
     }
   });
+}
+
+formatDateSimple(dateInput: any): string {
+  if (!dateInput) return '';
+
+  // Convertir en Date si ce n'est pas déjà le cas
+  const date = new Date(dateInput);
+  
+  // Vérifier si la date est valide
+  if (isNaN(date.getTime())) return '';
+
+  // Formater en MM/JJ/AAAA
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
 }
 
 openPrintWindow() {

@@ -57,5 +57,40 @@ export class DiplomeService {
   updateDiplome(id: number, diplomeRequest: DiplomeRequest): Observable<Diplome> {
     return this.http.put<Diplome>(`${this.apiUrl}/${id}`, diplomeRequest, { headers: this.headers });
   }
+
+  assignDiplomeToEmploye(employeId: number, diplomeId: number, dateObtention: Date): Observable<Diplome> {
+    // Corriger le décalage de fuseau horaire
+    const dateStr = this.formatDateForBackend(dateObtention);
+    
+    return this.http.post<Diplome>(
+        `${this.apiUrl}/assign/${employeId}/${diplomeId}?dateObtention=${dateStr}`,
+        null,
+        { headers: this.headers }
+    );
+}
+
+updateDiplomeAssignment(diplomeId: number, employeId: number, newDiplomeId: number, dateObtention: Date): Observable<Diplome> {
+    // Corriger le décalage de fuseau horaire
+    const dateStr = this.formatDateForBackend(dateObtention);
+    
+    return this.http.put<Diplome>(
+        `${this.apiUrl}/update-assignment/${diplomeId}/${employeId}/${newDiplomeId}?dateObtention=${dateStr}`,
+        null,
+        { headers: this.headers }
+    );
+}
+
+private formatDateForBackend(date: Date): string {
+    // Créer une date locale sans l'information de fuseau horaire
+    const localDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+    );
+    return localDate.toISOString().split('T')[0];
+}
+
+  
+
   
 }

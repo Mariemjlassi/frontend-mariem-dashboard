@@ -7,7 +7,7 @@
   <style>
     /* Styles globaux améliorés */
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      
       background-color: #f5f7fa;
       color: #2d3748;
       margin: 0;
@@ -199,7 +199,6 @@
     .status-badge {
       font-weight: 600;
       padding: 0.35rem 0.75rem;
-      border-radius: 20px;
       font-size: 0.875rem;
     }
 
@@ -210,6 +209,7 @@
       background: #dbeafe; /* Fond bleu très clair */
       color: #2563eb; /* Texte bleu */
       border-radius: 50%;
+      border-left: -30px;
       width: 26px;
       height: 26px;
       font-size: 0.75rem;
@@ -617,7 +617,7 @@
                 <td class="text-center">
                   <button pButton icon="pi pi-users" 
                           (click)="showParticipants(formation)"
-                          class="p-button-rounded p-button-text p-button-plain action-btn"
+                          class="p-button-rounded p-button-text"
                           pTooltip="Voir participants" tooltipPosition="top"></button>
                   <span class="participants-badge">{{formation.employes?.length || 0}}</span>
                 </td>
@@ -1018,7 +1018,7 @@
 
 
   <ng-template pTemplate="footer">
-    <button pButton type="button" 
+    <button  *ngIf="!selectedFormation.valide"   pButton type="button" 
             label="Valider la formation" 
             icon="pi pi-check-circle" 
             (click)="displayValidationConfirmDialog = true"

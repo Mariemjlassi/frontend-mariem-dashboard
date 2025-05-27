@@ -6,7 +6,13 @@
     </h1>
     <div class="header-actions">
       <p-button icon="pi pi-refresh" label="Actualiser" (click)="loadData()"></p-button>
-      
+      <p-menu #menu [popup]="true" [model]="exportItems"></p-menu>
+    <p-button 
+      icon="pi pi-file-pdf" 
+      label="Exporter PDF" 
+      severity="contrast"
+      (click)="menu.toggle($event)">
+    </p-button>
     </div>
   </div>
 
@@ -109,6 +115,66 @@
     <!-- Colonne de droite - Alertes et activités -->
     <div class="right-column">
       <!-- Alertes de sécurité -->
+       <p-card header="Analyse IA" subheader="TensorFlow.js intégré" class="ai-card" [style]="{'margin-top' : '10px'}">
+  <div *ngIf="isTrainingModel" class="training-progress">
+    <p-progressBar [value]="trainingProgress"></p-progressBar>
+    <p>Entraînement du modèle en cours... {{trainingProgress}}%</p>
+  </div>
+
+  <div *ngIf="!isTrainingModel && (!aiStatus && !activityTrends && !securityAnalysis)">
+    <div class="empty-analysis">
+      <i class="pi pi-robot"></i>
+      <p>L'analyse IA n'a pas encore été exécutée</p>
+      <p-button 
+        label="Lancer l'analyse" 
+        icon="pi pi-bolt" 
+        (click)="analyzeDataWithAI()">
+      </p-button>
+    </div>
+  </div>
+
+  <div *ngIf="!isTrainingModel && (aiStatus || activityTrends || securityAnalysis)" class="analysis-results">
+    <div class="result-item" [class.warning]="aiStatus.includes('AVERTISSEMENT')" 
+                            [class.danger]="aiStatus.includes('DANGER')">
+      <i class="pi pi-shield"></i>
+      <div>
+        <h4>État du Système</h4>
+        <p>{{aiStatus}}</p>
+      </div>
+    </div>
+
+    <div class="result-item">
+      <i class="pi pi-chart-line"></i>
+      <div>
+        <h4>Tendances des Activités</h4>
+        <p>{{activityTrends}}</p>
+      </div>
+    </div>
+
+    <div class="result-item" [class.warning]="securityAnalysis.includes('Alerte')" 
+                            [class.danger]="securityAnalysis.includes('ANOMALIE')">
+      <i class="pi pi-lock"></i>
+      <div>
+        <h4>Analyse de Sécurité</h4>
+        <p>{{securityAnalysis}}</p>
+      </div>
+    </div>
+
+    <div class="analysis-actions">
+      <p-button 
+        label="Actualiser" 
+        icon="pi pi-refresh" 
+        (click)="analyzeDataWithAI()">
+      </p-button>
+      <p-button 
+        label="Réinitialiser" 
+        icon="pi pi-trash" 
+        (click)="resetAIAnalysis()"
+        styleClass="p-button-text">
+      </p-button>
+    </div>
+  </div>
+</p-card>
       <p-card header="Alertes de Sécurité" subheader="Tentatives de connexion récentes" class="alert-card">
         <p-listbox [options]="failedAttempts" [listStyle]="{'max-height':'500px'}" [metaKeySelection]="false">
           <ng-template let-attempt pTemplate="item">
@@ -137,6 +203,8 @@
           </ng-template>
         </p-listbox>
       </p-card>
+      <!-- Ajoutez cette carte dans votre right-column -->
+      <!-- Ajoutez cette carte dans votre right-column -->
 
       <!-- Activités récentes -->
       
@@ -164,6 +232,8 @@
       </p-button>
     </mat-card-actions>
   </mat-card>
+
+
     </div>
   </div>
 
@@ -221,6 +291,15 @@
             >
           </p-button>
         </div>
+      
+  <div class="filter-item">
+    <p-button 
+      icon="pi pi-file-pdf" 
+      label="Exporter PDF" 
+      (click)="exportFilteredToPDF()"
+      styleClass="p-button-danger">
+    </p-button>
+  </div>
       </div>
     </div>
 

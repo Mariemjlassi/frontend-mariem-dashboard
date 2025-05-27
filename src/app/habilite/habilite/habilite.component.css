@@ -17,6 +17,199 @@
   --glass-effect: rgba(255, 255, 255, 0.85);
 }
 
+.explanation-panel {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #6366f1;
+}
+
+.explanation-item {
+  margin-bottom: 1.5rem;
+}
+
+.explanation-item p {
+  margin-bottom: 0.5rem;
+}
+
+.mastered-count {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.missing-count {
+  color: #F44336;
+  font-weight: bold;
+}
+
+.recommendation {
+  font-style: italic;
+  color: #5c6bc0;
+  margin-top: 0.5rem;
+}
+/* Structure principale */
+.poste-analysis-container {
+  padding: 1.5rem;
+}
+
+.competence-analysis-section {
+  margin-top: 2rem;
+}
+
+.competence-analysis-section h4 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+/* Conteneur flexible pour la visualisation */
+.competence-visualization {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Graphique - s'adapte selon la présence d'explications */
+.chart-container {
+  flex: 1 1 400px;
+  min-height: 350px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.chart-container.full-width {
+  flex: 1 1 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Explications - version améliorée */
+.explanation-container {
+  flex: 1 1 400px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.explanation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  color: #3f51b5;
+}
+
+.explanation-header i {
+  font-size: 1.2rem;
+}
+
+/* Message quand pas d'explications */
+.no-explanation {
+  flex: 1 1 100%;
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  background: #f9f9f9;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.no-explanation i {
+  font-size: 2rem;
+  color: #4caf50;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.no-explanation p {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* Cartes de compétences améliorées */
+.competence-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border-left: 4px solid #3f51b5;
+  transition: transform 0.2s;
+}
+
+.competence-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Responsive amélioré */
+@media (max-width: 992px) {
+  .competence-visualization {
+    flex-direction: column;
+  }
+  
+  .chart-container,
+  .explanation-container {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .chart-container {
+    min-height: 300px;
+  }
+  
+  .competence-card {
+    padding: 1rem;
+  }
+}
+/* Dans votre fichier CSS */
+.p-tooltip-text {
+  max-width: 300px;
+  white-space: normal;
+  text-align: left;
+}
+
+.p-tooltip .p-tooltip-arrow {
+  display: none;
+}
+
+.access-indicator {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.access-indicator:hover {
+  transform: scale(1.2);
+}
+
+.full-access {
+  color: #4CAF50; /* Vert pour accès complet */
+}
+
+.partial-access {
+  color: #FFC107; /* Orange pour accès partiel */
+}
+
+.no-access-cell {
+  color: #F44336; /* Rouge pour aucun accès */
+}
 
 /* Reset et styles de base */
 .dashboard-container {

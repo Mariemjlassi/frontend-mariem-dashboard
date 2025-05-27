@@ -19,8 +19,12 @@ import { ToolbarModule } from 'primeng/toolbar';
 import { ButtonGroupModule } from 'primeng/buttongroup';
 import { CardModule } from 'primeng/card';
 import { ListboxModule } from 'primeng/listbox';
-import { TimelineModule } from 'primeng/timeline';
-
+import { TimelineModule } from 'primeng/timeline'; // Ajoutez cette ligne
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
+import { AiDashboardService } from '../services/ai-dashboard.service';
+import { ProgressBarModule } from 'primeng/progressbar';
 Chart.register(...registerables);
 
 @Component({
@@ -44,7 +48,8 @@ Chart.register(...registerables);
     ButtonGroupModule,
     CardModule,
     ListboxModule,
-    TimelineModule
+    TimelineModule,
+    ProgressBarModule
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -69,6 +74,12 @@ export class DashboardComponent implements OnInit {
   timeRangeItems: any[] = [];
   activeTimeRange: any;
   failedAttempts: any[] = [];
+  aiStatus: string = '';
+activityTrends: string = '';
+securityAnalysis: string = '';
+isTrainingModel: boolean = false;
+trainingProgress: number = 0;
+
   alertLevels = {
     warning: 'warning',
     danger: 'danger'
@@ -81,10 +92,24 @@ export class DashboardComponent implements OnInit {
     lastWeekActions: 0,
   };
 
+  exportItems: any[] = [];
   constructor(
     private journalService: JournalActionService,
-    private userService: UtilisateurService
+    private userService: UtilisateurService,
+    private aiService: AiDashboardService
+    
   ) {}
+
+  // Ajoutez cette propriété à votre classe
+
+
+// Ajoutez cette méthode pour analyser les données
+
+
+// Méthode pour appeler l'API OpenAI
+
+
+  
 
   ngOnInit(): void {
     this.loadData();
@@ -97,6 +122,17 @@ export class DashboardComponent implements OnInit {
     { label: 'Mensuel', icon: 'pi pi-calendar', command: () => this.setTimeFilter('month') },
     { label: 'Annuel', icon: 'pi pi-calendar', command: () => this.setTimeFilter('year') }
   ];
+  this.exportItems = [
+  {
+    label: 'Exporter PDF',
+    items: [
+      { label: 'Vue actuelle', icon: 'pi pi-file-pdf', command: () => this.exportToPDF('current') },
+      { label: 'Cette semaine', icon: 'pi pi-file-pdf', command: () => this.exportToPDF('week') },
+      { label: 'Ce mois', icon: 'pi pi-file-pdf', command: () => this.exportToPDF('month') },
+      { label: 'Cette année', icon: 'pi pi-file-pdf', command: () => this.exportToPDF('year') }
+    ]
+  }
+];
   this.activeTimeRange = this.timeRangeItems[0];
 }
 
@@ -114,7 +150,7 @@ getLegendItems() {
   loadData() {
   this.journalService.getAllJournalActions().subscribe(actions => {
     this.activities = actions;
-    this.recentActivities = actions.slice(0, 11);
+    this.recentActivities = actions.slice(0, 5);
     this.stats.totalActions = actions.length;
     this.stats.lastWeekActions = this.getLastWeekActions(actions);
     this.activityTypes = [...new Set(actions.map(a => a.action))];
@@ -124,13 +160,15 @@ getLegendItems() {
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 5);
 
+      this.analyzeDataWithAI();
     this.activityTypeOptions = [
       { label: 'Tous les types', value: null },
       ...this.activityTypes.map(type => ({ label: type, value: type }))
     ];
 
     // Attendre que la vue soit mise à jour avant d'initialiser les graphiques
-    setTimeout(() => this.initCharts(), 0);
+    this.destroyCharts();
+    this.initCharts(); 
   });
 
   this.userService.getAllUsers().subscribe(users => {
@@ -138,6 +176,46 @@ getLegendItems() {
     this.stats.totalUsers = users.length;
     this.stats.lockedAccounts = users.filter(u => u.accountLocked).length;
   });
+}
+
+  async analyzeDataWithAI() {
+  try {
+    this.isTrainingModel = true;
+    this.trainingProgress = 0;
+    
+    // Prépare et entraîne le modèle
+    this.aiService.prepareTrainingData(this.stats, this.activities);
+    
+    // Simule la progression (dans un cas réel, utilisez les callbacks de tfjs)
+    const interval = setInterval(() => {
+      this.trainingProgress += 5;
+      if (this.trainingProgress >= 100) {
+        clearInterval(interval);
+        this.finalizeAnalysis();
+      }
+    }, 200);
+    
+    // Entraînement réel (commenté pour l'exemple car cela prendrait du temps)
+    // await this.aiService.trainModel();
+    // this.finalizeAnalysis();
+    
+  } catch (error) {
+    console.error('Erreur lors de l\'analyse IA:', error);
+    this.isTrainingModel = false;
+  }
+}
+
+private async finalizeAnalysis() {
+  this.aiStatus = await this.aiService.predictSystemStatus(this.stats);
+  this.activityTrends = this.aiService.analyzeActivityTrends(this.activities);
+  this.securityAnalysis = this.aiService.detectSecurityAnomalies(this.failedAttempts);
+  this.isTrainingModel = false;
+}
+
+resetAIAnalysis() {
+  this.aiStatus = '';
+  this.activityTrends = '';
+  this.securityAnalysis = '';
 }
 
   toggleAllActivities() {
@@ -345,6 +423,12 @@ private createRoleChart() {
 }
   private initTimeChart() {
   const ctx = document.getElementById('timeChart') as HTMLCanvasElement;
+  if (!ctx) {
+  console.warn('Canvas timeChart non trouvé.');
+  return;
+}
+
+  
   if (this.timeChart) {
     this.timeChart.destroy();
   }
@@ -359,7 +443,7 @@ private createRoleChart() {
         label: 'Nombre d\'actions',
         data: data,
         borderColor: 'rgb(27, 163, 75)',
-        backgroundColor: this.chartType === 'bar' ? 'rgba(185, 255, 195, 0.22)' : 'rgba(223, 255, 224, 0.35)',
+        backgroundColor: this.chartType === 'bar' ? 'rgba(185, 255, 195, 0.31)' : 'rgba(223, 255, 224, 0.46)',
         borderWidth: 2,
         tension: 0.4,
         fill: this.chartType === 'line'
@@ -429,20 +513,79 @@ private createRoleChart() {
 }
 
   private prepareTimeData() {
-    const now = new Date();
-    const dataMap = new Map<string, number>();
+  const now = new Date();
+  let labels: string[] = [];
+  let data: number[] = [];
+  let startDate: Date, endDate: Date;
 
-    this.activities.forEach((activity) => {
-      const date = new Date(activity.timestamp);
-      const key = this.getTimeKey(date);
-      dataMap.set(key, (dataMap.get(key) || 0) + 1);
-    });
+  // Créer une copie de la date actuelle pour éviter les effets de bord
+  const currentDate = new Date(now);
 
-    const labels = Array.from(dataMap.keys()).sort();
-    const data = labels.map((label) => dataMap.get(label) || 0);
-
-    return { labels, data };
+  switch (this.selectedFilter) {
+    case 'week': {
+      const monday = new Date(currentDate);
+      monday.setDate(monday.getDate() - monday.getDay() + (monday.getDay() === 0 ? -6 : 1));
+      startDate = new Date(monday);
+      endDate = new Date(monday);
+      endDate.setDate(monday.getDate() + 6);
+      break;
+    }
+    case 'month': {
+      startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      break;
+    }
+    case 'year': {
+      startDate = new Date(currentDate.getFullYear(), 0, 1);
+      endDate = new Date(currentDate.getFullYear(), 11, 31);
+      break;
+    }
+    default:
+      return { labels: [], data: [] };
   }
+
+  // Génération des dates intermédiaires
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + (this.selectedFilter === 'year' ? 31 : 1))) {
+    const key = this.formatDateKey(new Date(d), this.selectedFilter === 'year' ? 'month' : 'day');
+    
+    // Vérifier la duplication
+    if (!labels.includes(key)) {
+      labels.push(key);
+      data.push(this.countActionsForDate(new Date(d), this.selectedFilter === 'year' ? 'month' : 'day'));
+    }
+  }
+
+  return { labels, data };
+}
+
+private formatDateKey(date: Date, granularity: 'day' | 'month'): string {
+  const options: Intl.DateTimeFormatOptions = { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: 'long' 
+  };
+
+  if (granularity === 'month') {
+    return date.toLocaleDateString('fr-FR', { month: 'long' });
+  }
+  
+  return date.toLocaleDateString('fr-FR', options)
+             .replace(/^\w/, c => c.toUpperCase());
+}
+
+private countActionsForDate(date: Date, granularity: 'day' | 'month'): number {
+  return this.activities.filter(activity => {
+    const activityDate = new Date(activity.timestamp);
+    
+    if (granularity === 'day') {
+      return activityDate.toDateString() === date.toDateString();
+    }
+    
+    return activityDate.getMonth() === date.getMonth() && 
+           activityDate.getFullYear() === date.getFullYear();
+  }).length;
+}
+
 
   private getTimeKey(date: Date): string {
     switch (this.selectedFilter) {
@@ -467,17 +610,13 @@ private createRoleChart() {
   }
 
   private getTimeAxisLabel() {
-    switch (this.selectedFilter) {
-      case 'week':
-        return 'Semaines';
-      case 'month':
-        return 'Mois';
-      case 'year':
-        return 'Années';
-      default:
-        return '';
-    }
+  switch (this.selectedFilter) {
+    case 'week': return 'Jours de la semaine';
+    case 'month': return 'Jours du mois';
+    case 'year': return 'Mois de l\'année';
+    default: return '';
   }
+}
 
   setTimeFilter(filter: 'week' | 'month' | 'year') {
     this.selectedFilter = filter;
@@ -526,4 +665,166 @@ private createRoleChart() {
         return 'other-activity';
     }
   }
+
+  async exportToPDF(exportRange: 'current' | 'week' | 'month' | 'year' = 'current') {
+  // Déterminer le titre en fonction de la période
+  let title = 'Rapport du Tableau de Bord';
+  let fileName = 'dashboard-report';
+  
+  switch(exportRange) {
+    case 'week':
+      title += ' - Hebdomadaire';
+      fileName += '-hebdomadaire';
+      break;
+    case 'month':
+      title += ' - Mensuel';
+      fileName += '-mensuel';
+      break;
+    case 'year':
+      title += ' - Annuel';
+      fileName += '-annuel';
+      break;
+    default:
+      title += ' - Actuel';
+      fileName += '-actuel';
+  }
+
+  // Filtrer les données si nécessaire
+  let dataToExport = this.activities;
+  const now = new Date();
+  
+  if (exportRange !== 'current') {
+    const startDate = new Date();
+    
+    switch(exportRange) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+    
+    dataToExport = this.activities.filter(a => new Date(a.timestamp) >= startDate);
+  }
+
+  // Créer le PDF
+  const doc = new jsPDF('p', 'mm', 'a4');
+  
+  // Ajouter le titre
+  doc.setFontSize(20);
+  doc.setTextColor(40);
+  doc.text(title, 105, 20, { align: 'center' });
+  
+  // Ajouter la date
+  doc.setFontSize(12);
+  doc.text(`Généré le: ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
+  
+  // Ajouter les métriques
+  doc.setFontSize(14);
+  doc.text('Métriques Clés', 20, 45);
+  
+  // Dessiner des cartes pour les métriques
+  this.addMetricCard(doc, 'Utilisateurs', this.stats.totalUsers, 20, 50);
+  this.addMetricCard(doc, 'Comptes Verrouillés', this.stats.lockedAccounts, 70, 50);
+  this.addMetricCard(doc, 'Activités Total', this.stats.totalActions, 120, 50);
+  this.addMetricCard(doc, 'Activités Récentes', dataToExport.length, 170, 50);
+  
+  // Ajouter les graphiques
+  await this.addChartToPDF(doc, 'actionChart', '', 20, 80);
+  await this.addChartToPDF(doc, 'timeChart', 'Évolution des Activités', 20, 150);
+  await this.addChartToPDF(doc, 'roleChart', '', 110, 80);
+  
+  // Ajouter les alertes
+  doc.setFontSize(14);
+  doc.text('Alertes de Sécurité', 20, 220);
+  
+  const alerts = this.failedAttempts.slice(0, 5);
+  alerts.forEach((alert, i) => {
+    this.addAlertToPDF(doc, alert, 20, 225 + (i * 15));
+  });
+  
+  // Sauvegarder le PDF
+  doc.save(`${fileName}.pdf`);
+}
+
+private addMetricCard(doc: jsPDF, title: string, value: number, x: number, y: number) {
+  doc.setDrawColor(200);
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(x, y, 45, 25, 2, 2, 'FD');
+  doc.setFontSize(12);
+  doc.text(title, x + 23, y + 8, { align: 'center' });
+  doc.setFontSize(14);
+  doc.text(value.toString(), x + 23, y + 16, { align: 'center' });
+}
+
+private addAlertToPDF(doc: jsPDF, alert: any, x: number, y: number) {
+  doc.setFontSize(10);
+  doc.text(`${alert.utilisateur?.username || 'Utilisateur inconnu'} - ${alert.description}`, x, y);
+}
+
+private async addChartToPDF(doc: jsPDF, chartId: string, title: string, x: number, y: number) {
+  const chartElement = document.getElementById(chartId) as HTMLCanvasElement;
+  if (!chartElement) return;
+  
+  const canvas = await html2canvas(chartElement);
+  const imgData = canvas.toDataURL('image/png');
+  
+  doc.setFontSize(12);
+  doc.text(title, x, y - 5);
+  doc.addImage(imgData, 'PNG', x, y, 80, 60);
+}
+
+// Ajouter en haut du fichier
+
+
+// Ajouter cette méthode dans la classe
+exportFilteredToPDF() {
+  const doc = new jsPDF();
+  
+  // Titre
+  doc.setFontSize(18);
+  doc.text('Rapport des Activités Filtrées', 15, 20);
+  
+  // Métadonnées
+  doc.setFontSize(11);
+  doc.setTextColor(100);
+  doc.text(`Généré le: ${new Date().toLocaleDateString()}`, 15, 27);
+  doc.text(`Filtres appliqués: ${this.getCurrentFiltersText()}`, 15, 33);
+
+  // Configuration du tableau
+  const columns = ['Action', 'Utilisateur', 'Description', 'Date'];
+  const rows = this.filteredActivities.map(activity => [
+    activity.action,
+    activity.utilisateur?.username || 'Inconnu',
+    activity.description,
+    new Date(activity.timestamp).toLocaleDateString()
+  ]);
+
+  // Génération du tableau
+  autoTable(doc, {
+    head: [columns],
+    body: rows,
+    startY: 40,
+    styles: { fontSize: 9 },
+    theme: 'striped',
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+  });
+
+  doc.save('activites-filtrees.pdf');
+}
+
+private getCurrentFiltersText(): string {
+  let filters = [];
+  if (this.selectedDateFilter) {
+    filters.push(`Date: ${this.selectedDateFilter.toLocaleDateString()}`);
+  }
+  if (this.selectedTypeFilter) {
+    filters.push(`Type: ${this.selectedTypeFilter}`);
+  }
+  return filters.join(' | ') || 'Aucun filtre';
+}
 }

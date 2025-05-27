@@ -19,25 +19,8 @@ import { PosteDtoHabilite } from '../model/poste-dto-habilite';
 import { ButtonGroupModule } from 'primeng/buttongroup';
 import { TooltipItem } from 'chart.js'; 
 import { AvatarModule } from 'primeng/avatar';
-@Pipe({
-  name: 'filter'
-})
-export class FilterPipe implements PipeTransform {
-  transform(items: any[], field: string, subField: string, value: any): any[] {
-    if (!items) return [];
-    if (!value) return items;
+import { PosteService } from '../../poste/service/poste.service';
 
-    return items.filter(item => {
-      if (subField) {
-        // Pour les tableaux imbriqués (ex: postesHabilites.competencesManquantes)
-        return item[field].some((subItem: any) => subItem[subField].length === value);
-      } else {
-        // Pour les champs simples
-        return item[field] === value;
-      }
-    });
-  }
-}
 @Component({
   selector: 'app-habilite',
   templateUrl: './habilite.component.html',
@@ -46,7 +29,6 @@ export class FilterPipe implements PipeTransform {
   imports: [
     ButtonGroupModule ,
     DropdownModule,
-     FilterPipe,
     CommonModule,
     ChartModule,
     TabViewModule,
@@ -79,7 +61,7 @@ export class HabiliteComponent implements OnInit {
   chartData: any;
   chartOptions: any;
   showAllEmployees: boolean = false;
-  constructor(private habiliteService: HabiliteService) {}
+  constructor(private habiliteService: HabiliteService,private posteService : PosteService) {}
 ngOnInit(): void {
   this.loadEmployees();
   }
@@ -544,13 +526,26 @@ getTooltipForAccess(employe: EmployeHabilitationDto, posteTitre: string): string
   const poste = employe.postesHabilites.find(p => p.titre === posteTitre);
   if (!poste) return 'Aucun accès à ce poste';
   
+  let tooltip = `<strong>${posteTitre}</strong><br>`;
+  
   if (poste.competencesManquantes.length === 0) {
-    return 'Accès complet à ce poste';
+    tooltip += '✅ Accès complet<br>';
   } else {
-    return `Accès partiel - Compétences manquantes: ${poste.competencesManquantes.join(', ')}`;
+    tooltip += `⚠️ Accès partiel (${this.calculateAccessPercentage(poste)}%)<br>`;
   }
+  
+  tooltip += `<br><u>Compétences maîtrisées:</u><br>`;
+  tooltip += poste.competences.filter(c => !poste.competencesManquantes.includes(c))
+    .map(c => `• ${c}`)
+    .join('<br>') || 'Aucune';
+  
+  if (poste.competencesManquantes.length > 0) {
+    tooltip += `<br><br><u>Compétences manquantes:</u><br>`;
+    tooltip += poste.competencesManquantes.map(c => `• ${c}`).join('<br>');
+  }
+  
+  return tooltip;
 }
-
 
 
 // Ajoutez cette propriété à votre classe
@@ -560,20 +555,27 @@ currentDisplayMode: 'cards' | 'matrix' = 'cards';
 
 // Dans loadEmployees(), initialisez allPostes
 loadEmployees(): void {
+  // Charge les employés avec leurs habilitations
   this.habiliteService.getEmployesAvecPostesHabilitesProches().subscribe(data => {
     this.employes = data;
     this.filteredEmployes = [...this.employes];
     this.initChart();
     this.initPostesList();
-     this.selectRandomPoste(); 
+    this.selectRandomPoste();
 
-    const postesSet = new Set<string>();
-    this.employes.forEach(emp => {
-      emp.postesHabilites.forEach(p => postesSet.add(p.titre));
+    // Charge tous les postes depuis PosteService
+    this.posteService.getAllPostes().subscribe(allPostes => {
+      this.allPostes = allPostes
+        .map(poste => poste.titre) // ou poste.nom selon votre modèle
+        .sort((a, b) => a.localeCompare(b));
     });
-    this.allPostes = Array.from(postesSet).sort();
   });
 }
+
+
+
+
+
 accessDistributionData = {
   labels: ['Accès complets', 'Accès partiels', 'Aucun accès'],
   datasets: [
@@ -614,13 +616,12 @@ getStars(poste: any): number[] {
   return [1, 2, 3, 4, 5];
 }
 // Ajoutez ces propriétés à votre classe
-lineChartData: any;
-lineChartOptions: any;
-topCompetencesData: any;
-weakCompetencesData: any;
-barChartOptions: any;
+// Ajoutez ces propriétés à votre classe HabiliteComponent
+combinedCompetenceData: any;
+pieChartOptions: any;
+ambivalentCompetences: {name: string, mastered: number, missing: number}[] = [];
+showExplanation: boolean = false;
 
-// Méthode pour initialiser les graphiques de compétences
 initCompetenceCharts(): void {
   if (!this.posteSelectionne) return;
 
@@ -649,57 +650,98 @@ initCompetenceCharts(): void {
       competenceStats[comp].missing++;
     });
   });
+// Dans initCompetenceCharts(), après avoir calculé competenceStats:
 
-  // 3. Préparer les données pour les graphiques
+// Détecter les compétences ambivalentes
+this.ambivalentCompetences = Object.keys(competenceStats)
+  .filter(comp => competenceStats[comp].mastered > 0 && competenceStats[comp].missing > 0)
+  .map(comp => ({
+    name: comp,
+    mastered: competenceStats[comp].mastered,
+    missing: competenceStats[comp].missing
+  }));
+
+this.showExplanation = this.ambivalentCompetences.length > 0;
+  // 3. Trier et sélectionner les top compétences
   const competences = Object.keys(competenceStats);
   
-  // Top compétences maîtrisées
   const topCompetences = [...competences]
+    .filter(comp => competenceStats[comp].mastered > 0)
     .sort((a, b) => competenceStats[b].mastered - competenceStats[a].mastered)
     .slice(0, 5);
   
-  // Compétences à améliorer
   const weakCompetences = [...competences]
+    .filter(comp => competenceStats[comp].missing > 0)
     .sort((a, b) => competenceStats[b].missing - competenceStats[a].missing)
     .slice(0, 5);
 
-  // 4. Configurer les graphiques
-  this.topCompetencesData = {
-    labels: topCompetences,
+  // 4. Préparer les données pour le pie chart combiné
+  this.combinedCompetenceData = {
+    labels: [
+      ...topCompetences.map(comp => `${comp} (Maîtrisée)`),
+      ...weakCompetences.map(comp => `${comp} (À améliorer)`)
+    ],
     datasets: [{
-      label: 'Employés maîtrisant cette compétence',
-     backgroundColor: 'rgba(156, 39, 176, 0.3)',
+      data: [
+        ...topCompetences.map(comp => competenceStats[comp].mastered),
+        ...weakCompetences.map(comp => competenceStats[comp].missing)
+      ],
+    backgroundColor: [
+  'rgba(236, 64, 122, 0.3)',
+  'rgba(156, 39, 176, 0.3)',
+  'rgba(103, 58, 183, 0.3)',
+  'rgba(63, 81, 181, 0.3)',
+  'rgba(33, 150, 243, 0.3)',
 
-      data: topCompetences.map(comp => competenceStats[comp].mastered)
+  'rgba(255, 128, 171, 0.3)',
+  'rgba(255, 64, 129, 0.3)',
+  'rgba(245, 0, 87, 0.3)',
+  'rgba(194, 24, 91, 0.3)',
+  'rgba(233, 30, 99, 0.3)'
+],
+hoverBackgroundColor: [
+  'rgba(236, 64, 122, 0.5)',
+  'rgba(156, 39, 176, 0.5)',
+  'rgba(103, 58, 183, 0.5)',
+  'rgba(63, 81, 181, 0.5)',
+  'rgba(33, 150, 243, 0.5)',
+
+  'rgba(255, 128, 171, 0.5)',
+  'rgba(255, 64, 129, 0.5)',
+  'rgba(245, 0, 87, 0.5)',
+  'rgba(194, 24, 91, 0.5)',
+  'rgba(233, 30, 99, 0.5)'
+],
+
+      borderWidth: 1,
+      borderColor: '#fff'
     }]
   };
 
-  this.weakCompetencesData = {
-    labels: weakCompetences,
-    datasets: [{
-      label: 'Employés devant améliorer cette compétence',
-     backgroundColor: 'rgba(255, 152, 0, 0.3)' ,
-      data: weakCompetences.map(comp => competenceStats[comp].missing)
-    }]
-  };
-
-  // Options communes pour les bar charts
-  this.barChartOptions = {
-    responsive: true,
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1
+this.pieChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'right',
+      labels: {
+        boxWidth: 19,
+        padding: 15,
+        font: {
+          size: 12
         }
       }
     },
-    plugins: {
-      legend: {
-        display: false
-      }
+    tooltip: {
+      bodyFont: {
+        size: 14
+      },
+      displayColors: false
     }
-  };
+  },
+  cutout: '65%',
+  spacing: 5
+};
 }
 // Messages d'aide à la décision
 decisionMessages: {

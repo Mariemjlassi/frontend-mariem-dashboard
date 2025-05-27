@@ -22,7 +22,7 @@
                 <form [formGroup]="loginForm" (ngSubmit)="login()" class="animate__animated animate__fadeIn animate__delay-1s">
                     <div class="input-group">
                         <span class="input-icon pi pi-user"></span>
-                        <input pInputText id="username" formControlName="username" placeholder="Nom d'utilisateur ou email"
+                        <input pInputText id="username" formControlName="username" placeholder="Nom d'utilisateur "
                             pTooltip="Saisissez votre identifiant" tooltipPosition="top" />
                     </div>
                     <span *ngIf="loginForm.controls['username'].invalid && loginForm.controls['username'].touched" class="error-message">
@@ -57,7 +57,7 @@
                     </div>
 
                     <re-captcha #recaptcha formControlName="recaptcha" class="recaptcha-container"
-                        siteKey="6LetVOUqAAAAAHNoSpN1Hq8Ms7HFLEo4ief1JGF2" 
+                        siteKey="6LeIGUgrAAAAAHWyRifLhboUcwXHBeNzmzNZYa3C" 
                         (resolved)="onCaptchaResolved($event!)">
                     </re-captcha>
 
@@ -73,6 +73,7 @@
             <div class="illustration-section">
                 <div class="illustration-content">
                     <h2 class="welcome-title">Bienvenue !</h2>
+                    
                     <p class="welcome-text">Accédez à toutes les fonctionnalités de votre compte</p>
                     
                     <div class="illustration-image">
