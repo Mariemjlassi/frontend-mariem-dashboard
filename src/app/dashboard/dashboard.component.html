@@ -118,7 +118,7 @@
        <p-card header="Analyse IA" subheader="TensorFlow.js intégré" class="ai-card" [style]="{'margin-top' : '10px'}">
   <div *ngIf="isTrainingModel" class="training-progress">
     <p-progressBar [value]="trainingProgress"></p-progressBar>
-    <p>Entraînement du modèle en cours... {{trainingProgress}}%</p>
+    <p>Entraînement du modèle IA en cours... {{trainingProgress}}%</p>
   </div>
 
   <div *ngIf="!isTrainingModel && (!aiStatus && !activityTrends && !securityAnalysis)">
@@ -151,7 +151,7 @@
       </div>
     </div>
 
-    <div class="result-item" [class.warning]="securityAnalysis.includes('Alerte')" 
+    <div class="result-item" [class.warning]="securityAnalysis.includes('ALERTE')" 
                             [class.danger]="securityAnalysis.includes('ANOMALIE')">
       <i class="pi pi-lock"></i>
       <div>
@@ -175,7 +175,7 @@
     </div>
   </div>
 </p-card>
-      <p-card header="Alertes de Sécurité" subheader="Tentatives de connexion récentes" class="alert-card">
+      <p-card header="Alertes de Sécurité" subheader="Tentatives de connexion récentes" class="alert-card" [style]="{'margin-top' : '10px'}">
         <p-listbox [options]="failedAttempts" [listStyle]="{'max-height':'500px'}" [metaKeySelection]="false">
           <ng-template let-attempt pTemplate="item">
             <div class="alert-item" [class]="getAlertLevel(attempt)">

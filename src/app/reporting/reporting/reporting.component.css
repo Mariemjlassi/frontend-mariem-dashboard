@@ -205,7 +205,7 @@
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     min-height: 100vh;
-    margin-left: 50px;
+    margin-left: 30px;
     font-family: 'Poppins', sans-serif;
     
 }
@@ -568,7 +568,6 @@
 .p-tag {
     font-weight: 500;
     padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
 }
 
 /* Timeline des expériences */
@@ -724,6 +723,7 @@
   /* Employee Details Dialog */
 .employee-details-container {
   padding: 1rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 .employee-header {
@@ -865,8 +865,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #670D2F;
-  color: #EF88AD;
+  background: #2B3467;
+  color: #BAD7E9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -910,7 +910,7 @@
   background: #f8fafc;
   padding: 1rem;
   border-radius: 6px;
-  border-left: 3px solid #2B3467;
+  border-left: 3px solid #263bb3;
 }
 
 .formation-header {
@@ -925,7 +925,7 @@
 }
 
 .formation-type {
-  background: #e7f6ff;
+  background: #d7eefd;
   color: #2B3467;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;

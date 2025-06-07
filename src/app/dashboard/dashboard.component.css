@@ -189,8 +189,12 @@
 /* Structure générale */
 .dashboard-container {
   padding: 2rem;
-  font-family: 'Poppins', sans-serif;
-  background-color: #f5f7fa;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    min-height: 100vh;
+    margin-left: 30px;
+    font-family: 'Poppins', sans-serif;
+  
   min-height: 100vh;
   margin-left: 30px;
 }

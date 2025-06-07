@@ -43,18 +43,21 @@ export class ListNotificationsComponent implements OnInit {
   }
 
   loadNotifications() {
-    this.loading = true;
-    this.notificationService.getNotifications(this.userId!).subscribe({
-      next: (data) => {
-        this.notifications = data;
-        this.unreadCount = data.filter((n: any) => !n.lue).length;
-        this.loading = false;
-      },
-      error: () => {
-        this.loading = false;
-      }
-    });
-  }
+  this.loading = true;
+  this.notificationService.getNotifications(this.userId!).subscribe({
+    next: (data) => {
+      // Tri des notifications par date décroissante
+      this.notifications = data.sort((a, b) => {
+        return new Date(b.dateNotification).getTime() - new Date(a.dateNotification).getTime();
+      });
+      this.unreadCount = data.filter((n: any) => !n.lue).length;
+      this.loading = false;
+    },
+    error: () => {
+      this.loading = false;
+    }
+  });
+}
 
   markAsRead(notificationId: number) {
     this.notificationService.markOneAsRead(notificationId).subscribe(() => {

@@ -14,6 +14,7 @@
     height: calc(100vh - 60px); /* Ajuster selon votre header */
     font-family: 'Inter', sans-serif;
     background-color: #f8fafc;
+    margin-left: 30px;
   }
   
   /* Sidebar */

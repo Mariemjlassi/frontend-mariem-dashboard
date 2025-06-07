@@ -183,33 +183,43 @@ getLegendItems() {
     this.isTrainingModel = true;
     this.trainingProgress = 0;
     
-    // Prépare et entraîne le modèle
-    this.aiService.prepareTrainingData(this.stats, this.activities);
+    // Remplacez la simulation par un vrai entraînement
+    await this.aiService.trainModel(this.stats);
     
-    // Simule la progression (dans un cas réel, utilisez les callbacks de tfjs)
+    // Mise à jour de la progression (visuelle seulement)
     const interval = setInterval(() => {
-      this.trainingProgress += 5;
+      this.trainingProgress += 10;
       if (this.trainingProgress >= 100) {
         clearInterval(interval);
         this.finalizeAnalysis();
       }
     }, 200);
     
-    // Entraînement réel (commenté pour l'exemple car cela prendrait du temps)
-    // await this.aiService.trainModel();
-    // this.finalizeAnalysis();
-    
   } catch (error) {
-    console.error('Erreur lors de l\'analyse IA:', error);
+    console.error('Erreur IA:', error);
     this.isTrainingModel = false;
+    this.aiStatus = "Erreur lors de l'analyse IA";
   }
 }
 
 private async finalizeAnalysis() {
-  this.aiStatus = await this.aiService.predictSystemStatus(this.stats);
-  this.activityTrends = this.aiService.analyzeActivityTrends(this.activities);
-  this.securityAnalysis = this.aiService.detectSecurityAnomalies(this.failedAttempts);
-  this.isTrainingModel = false;
+  try {
+    this.aiStatus = await this.aiService.predictSystemStatus(this.stats);
+    this.activityTrends = this.aiService.analyzeActivityTrends(this.activities);
+    
+    this.securityAnalysis = this.aiService.detectSecurityAnomalies(
+      this.failedAttempts.filter(a => {
+        const date = new Date(a.timestamp);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return date > weekAgo;
+      })
+    );
+  } catch (e) {
+    console.error(e);
+  } finally {
+    this.isTrainingModel = false;
+  }
 }
 
 resetAIAnalysis() {
@@ -544,14 +554,28 @@ private createRoleChart() {
       return { labels: [], data: [] };
   }
 
-  // Génération des dates intermédiaires
-  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + (this.selectedFilter === 'year' ? 31 : 1))) {
-    const key = this.formatDateKey(new Date(d), this.selectedFilter === 'year' ? 'month' : 'day');
+  // Cas spécial pour l'année - générer les mois
+  if (this.selectedFilter === 'year') {
+    for (let month = 0; month < 12; month++) {
+      const monthDate = new Date(currentDate.getFullYear(), month, 1);
+      const key = this.formatDateKey(monthDate, 'month');
+      labels.push(key);
+      data.push(this.countActionsForDate(monthDate, 'month'));
+    }
+    return { labels, data };
+  }
+
+  // Génération des dates intermédiaires pour semaine et mois
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    // Exclure le dimanche (jour 0)
+    if (d.getDay() === 0) continue;
+
+    const key = this.formatDateKey(new Date(d), 'day');
     
     // Vérifier la duplication
     if (!labels.includes(key)) {
       labels.push(key);
-      data.push(this.countActionsForDate(new Date(d), this.selectedFilter === 'year' ? 'month' : 'day'));
+      data.push(this.countActionsForDate(new Date(d), 'day'));
     }
   }
 
@@ -559,23 +583,30 @@ private createRoleChart() {
 }
 
 private formatDateKey(date: Date, granularity: 'day' | 'month'): string {
-  const options: Intl.DateTimeFormatOptions = { 
-    weekday: 'long', 
-    day: 'numeric', 
-    month: 'long' 
-  };
-
+  if (this.selectedFilter === 'year') {
+    return date.toLocaleDateString('fr-FR', { month: 'long' });
+  }
+  
   if (granularity === 'month') {
     return date.toLocaleDateString('fr-FR', { month: 'long' });
   }
   
-  return date.toLocaleDateString('fr-FR', options)
-             .replace(/^\w/, c => c.toUpperCase());
+  // Format pour les jours (semaine et mois)
+  return date.toLocaleDateString('fr-FR', { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: this.selectedFilter === 'month' ? 'long' : undefined
+  }).replace(/^\w/, c => c.toUpperCase());
 }
 
 private countActionsForDate(date: Date, granularity: 'day' | 'month'): number {
   return this.activities.filter(activity => {
     const activityDate = new Date(activity.timestamp);
+    
+    if (this.selectedFilter === 'year') {
+      return activityDate.getMonth() === date.getMonth() && 
+             activityDate.getFullYear() === date.getFullYear();
+    }
     
     if (granularity === 'day') {
       return activityDate.toDateString() === date.toDateString();
@@ -584,6 +615,15 @@ private countActionsForDate(date: Date, granularity: 'day' | 'month'): number {
     return activityDate.getMonth() === date.getMonth() && 
            activityDate.getFullYear() === date.getFullYear();
   }).length;
+}
+
+private getTimeAxisLabel() {
+  switch (this.selectedFilter) {
+    case 'week': return 'Jours de la semaine (Lun-Sam)';
+    case 'month': return 'Jours du mois (Lun-Sam)';
+    case 'year': return 'Mois de l\'année';
+    default: return '';
+  }
 }
 
 
@@ -609,14 +649,7 @@ private countActionsForDate(date: Date, granularity: 'day' | 'month'): number {
     );
   }
 
-  private getTimeAxisLabel() {
-  switch (this.selectedFilter) {
-    case 'week': return 'Jours de la semaine';
-    case 'month': return 'Jours du mois';
-    case 'year': return 'Mois de l\'année';
-    default: return '';
-  }
-}
+ 
 
   setTimeFilter(filter: 'week' | 'month' | 'year') {
     this.selectedFilter = filter;
